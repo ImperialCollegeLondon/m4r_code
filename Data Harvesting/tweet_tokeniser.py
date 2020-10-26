@@ -1,5 +1,7 @@
 """
-Tweet Tokenizer
+Tweet Tokeniser
+
+Takes tweet along with metadata to tokenise the tweet
 
 Rules/Hierarchy:
     urls & media -> "<url>"
@@ -14,6 +16,7 @@ Rules/Hierarchy:
 from nltk import TweetTokenizer
 import emoji
 from itertools import groupby
+import re #regular expressions
 
 # - FUNCTIONS TO CHECK FOR THE VARIOUS RULES -
 
@@ -131,7 +134,5 @@ def tweet_tokeniser(tweet, url_data, user_mentions_data):
                         new_tokens.append("<repeat>")
                         
     return new_tokens, num_hashtags, num_mentions, num_urls, num_emojis
-                    
-                
                 
 
