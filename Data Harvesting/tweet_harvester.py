@@ -23,7 +23,8 @@ overwrite = False
 new_header = False
 
 # *- NUMBER OF TWEETS TO COLLECT? -*
-n = 5000
+n = 20000
+
 
 
 
@@ -336,30 +337,56 @@ with open(file_path, mode=mode, newline='', encoding="utf-8") as w:
                 qt_id
                 ]
             
-            user_data = [
-                tweet.user.screen_name,
-                tweet.user.name,
-                tweet.user.verified,
-                tweet.user.created_at,
-                tweet.user.followers_count,
-                tweet.user.friends_count,
-                tweet.user.listed_count,
-                tweet.user.favourites_count,
-                tweet.user.statuses_count,
-                tweet.user.default_profile,
-                tweet.user.default_profile_image,
-                user_default_banner,
-                tweet.user.description,
-                tweet.user.location,
-                tweet.user.url,
-                user_prof_banner,
-                tweet.user.profile_image_url_https,
-                tweet.user.lang,
-                tweet.user.time_zone,
-                tweet.user.geo_enabled,
-                tweet.user.contributors_enabled,
-                tweet.user.has_extended_profile
-                ]
+            try:
+                user_data = [
+                    tweet.user.screen_name,
+                    tweet.user.name,
+                    tweet.user.verified,
+                    tweet.user.created_at,
+                    tweet.user.followers_count,
+                    tweet.user.friends_count,
+                    tweet.user.listed_count,
+                    tweet.user.favourites_count,
+                    tweet.user.statuses_count,
+                    tweet.user.default_profile,
+                    tweet.user.default_profile_image,
+                    user_default_banner,
+                    tweet.user.description,
+                    tweet.user.location,
+                    tweet.user.url,
+                    user_prof_banner,
+                    tweet.user.profile_image_url_https,
+                    tweet.user.lang,
+                    tweet.user.time_zone,
+                    tweet.user.geo_enabled,
+                    tweet.user.contributors_enabled,
+                    tweet.user.has_extended_profile
+                    ]
+            except:
+                user_data = [
+                    tweet.user.screen_name,
+                    tweet.user.name,
+                    tweet.user.verified,
+                    tweet.user.created_at,
+                    tweet.user.followers_count,
+                    tweet.user.friends_count,
+                    tweet.user.listed_count,
+                    tweet.user.favourites_count,
+                    tweet.user.statuses_count,
+                    tweet.user.default_profile,
+                    tweet.user.default_profile_image,
+                    user_default_banner,
+                    tweet.user.description,
+                    tweet.user.location,
+                    tweet.user.url,
+                    user_prof_banner,
+                    tweet.user.profile_image_url_https,
+                    tweet.user.lang,
+                    tweet.user.time_zone,
+                    tweet.user.geo_enabled,
+                    tweet.user.contributors_enabled,
+                    None
+                    ]
             
 
 
