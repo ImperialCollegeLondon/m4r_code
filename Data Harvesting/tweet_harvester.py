@@ -23,7 +23,7 @@ overwrite = False
 new_header = False
 
 # *- NUMBER OF TWEETS TO COLLECT? -*
-n = 20000
+n = 5000
 
 
 
@@ -53,7 +53,7 @@ import time
 
 # *- FILE PATHS -*
 folder_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting"
-file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data\\us_election_data.csv"
+file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\us_election_data.csv"
 cwd = os.getcwd()
 if folder_path not in sys.path:
     sys.path.append(folder_path)
