@@ -27,57 +27,103 @@ path_to_embeddings = path_to_m4r + "GloVe\\glove.twitter.27B\\glove.twitter.27B.
 
 
 
-# Opening the labelled caverlee-2011 dataset from the Indiana dataset
-def load_data(n = None, save = False):
+
+
+# Loading data and splitting:
+def load_data(n=None):
     """
-    # Opens the caverlee-2011 dataset from the Indiana dataset
-    # Loads tweets from legitimate users and content polluters
-    # Shuffles them and splits them into a training and a testing dataset
-    n = number of tweets to collect from each data source
-        (int, or None if you want to collect all of them)
-    save = whether to save or output as a file
+    n = number of tokenised tweets to load from each dataset 
+
+    """
+    samples_humans = []
+    samples_bots = []
+    
+    # GROSSLY INEFFICIENT
+    # Data is NO LONGER STORED HERE
+    df_humans = pd.read_csv(path_to_m4r+"m4r_code\\Data\\labelled_tokenised_caverlee_humans.csv", header=None).astype('O')
+    df_bots = pd.read_csv(path_to_m4r+"m4r_code\\Data\\labelled_tokenised_caverlee_bots.csv", header=None).astype('O')
+    
+    df_humans.columns = ["tweets"]
+    df_bots.columns = ["tweets"]
+    
+    # df_humans.apply(str)
+    # df_bots.apply(str)
+    
+    df_humans.iloc[:, 0] = df_humans.iloc[:,0].apply(lambda x: eval(x))
+    df_bots.iloc[:, 0] = df_bots.iloc[:,0].apply(lambda x: eval(x))    
+    # df_humans.iloc[:,0]= pd.eval(df_humans.iloc[:,0], parser = "python")
+    # df_bots.iloc[:,0]= pd.eval(df_bots.iloc[:,0], parser = "python")
+    
+    # df_humans= pd.eval(df_humans, parser = "python")
+    # df_bots= pd.eval(df_bots, parser = "python")
+    
+    # df_humans["tweets"] = df_humans["tweets"].astype('O')
+    
+    # for i in range(len(df_humans)):
+    #     samples_humans.append(eval(df_humans.iloc[i,0]))
+        
+    # for i in range(len(df_bots)):
+    #     samples_bots.append(eval(df_bots.iloc[i,0]))
+    
+    
+    
+    #samples_humans = df_humans.values.tolist()
+    #samples_bots = df_bots.values.tolist()
+    #samples_humans = [eval(a) for a in samples_humans]
+    
+    # JUST NEEDED eval FUNCTION
+    
+    
+    """
+    # currently not working!
+    samples_humans = []
+    with open(path_to_m4r+"m4r_code\\Data\\labelled_tokenised_caverlee_humans.csv", 'r', encoding = "utf-8") as t:
+        for i, line in enumerate(t):
+            tweet = line
+            print(tweet)
+            print(type(tweet))
+            tweet = eval(line)
+            print(tweet)
+            print(type(tweet))
+            tweet = eval('"'+tweet+'"')
+            print(tweet)
+            print(type(tweet))
+            samples_humans.append(tweet)
+            if i == n:
+                break
+        
+    
+    samples_bots = []
+    with open(path_to_m4r+"m4r_code\\Data\\labelled_tokenised_caverlee_bots.csv", 'r', encoding = "utf-8") as t:
+        for i, line in enumerate(t):
+            samples_bots.append(eval(line))
+            if i == n:
+                break
     """
     
-    
-    samples = []
-    # Opening the legitimate users tweets:
-    with open(path_to_caverlee+"legitimate_users_tweets.txt", 'r', encoding = "utf-8") as t:
-        count = 0
-        for i, line in enumerate(t):
-            count += 1
-            sys.stdout.write("\rReading line %i" % i+1)
-            values = line.split("\t")
-            tweet = "".join(values[2:-1])
-            tokenised_tweet = text_tokeniser(tweet)
-            samples.append(tokenised_tweet)
-            if count == n:
-                break
-    no_of_legitimate = len(samples)
-    # Opening the content polluters tweets:
-    print("\nMoving onto content polluters tweets\n...")
-    with open(path_to_caverlee+"content_polluters_tweets.txt", 'r', encoding = "utf-8") as t:
-        count = 0
-        for i, line in enumerate(t):
-            count += 1
-            sys.stdout.write("\rReading line %i" % i+1)
-            values = line.split("\t")
-            tweet = "".join(values[2:-1])
-            tokenised_tweet = text_tokeniser(tweet)
-            samples.append(tokenised_tweet)
-            if count == n:
-                break
-    no_of_polluters = len(samples) - no_of_legitimate
-    
-    # Boolean variable determining if tweet is from a bot or not:
-    labels = [0]*no_of_legitimate + [1]*no_of_polluters
-    
-    
-    # Shuffling the data:
-    
+    return df_humans, df_bots
+    # return samples_humans, samples_bots
+
+# Shuffling the data:
+# And splitting into training and validation samples
+def split_data(samples_humans, samples_bots):
     # Method 1:
     # Create pandas dataframe, shuffle using sample
     # data = pd.DataFrame(data={"tokenised_tweet": samples, "is_bot": labels})
     # data = data.sample(f=1)
+    
+    # Check to see if input is a pandas dataframe or a list:
+    try:
+        samples_humans = samples_humans.values
+        samples_bots = samples_bots.values
+    except:
+        pass
+    
+    # Boolean variable determining if tweet is from a bot or not:
+    no_of_humans = len(samples_humans)
+    no_of_bots = len(samples_bots)
+    labels = [0]*len(samples_humans) + [1]*len(samples_bots)
+    samples = np.append(samples_humans, samples_bots)
     
     # Method 2:
     seed = 1337
@@ -98,9 +144,9 @@ def load_data(n = None, save = False):
     return train_samples, val_samples, train_labels, val_labels
 
 
-    
 
-def load_embeddings(max_tokens = 20000):
+
+def load_embeddings(train_samples, max_tokens = 20000):
     """
     # Opens the glove.twitter.27B.25d.txt file
     # Converts to a dictionary
@@ -109,8 +155,11 @@ def load_embeddings(max_tokens = 20000):
     #    lots of smaller files)
     """
     vectorizer = TextVectorization(max_tokens=20000, output_sequence_length=200)
-    embeddings_dict = {}
+    text_ds = tf.data.Dataset.from_tensor_slices(train_samples).batch(128)
+    vectorizer.adapt(text_ds)
     
+    return vectorizer
+        
 
 
 
