@@ -30,6 +30,7 @@ eyes = "[8:=;]"
 nose = "['`\-]?"
 
 
+
 def check_url(token):
     """
     Checks if a token is a URL
