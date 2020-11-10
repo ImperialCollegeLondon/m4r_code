@@ -23,7 +23,7 @@ overwrite = False
 new_header = False
 
 # *- NUMBER OF TWEETS TO COLLECT? -*
-n = 5000
+n = 40000
 
 
 
@@ -59,7 +59,7 @@ if folder_path not in sys.path:
     sys.path.append(folder_path)
 
 
-
+    
 
 
 # *- TWITTER API KEYS -*
@@ -108,7 +108,7 @@ today = str(date.today())
 count = 100
 search_terms_1 = "#trump OR #donaldtrump OR #trump2020 OR #votetrump OR #trumppence2020 OR #gop OR #republicans OR "
 search_terms_2 = "#biden OR #joebiden OR #biden2020 OR #votebiden OR #bidenharris2020 OR #votedems OR #democrats OR "
-search_terms_3 = "#uselection OR #uselection2020 OR #presidentialelection2020 OR #elections2020 OR #potus OR #whitehouse"
+search_terms_3 = "#uselection OR #uselection2020 OR #presidentialelection2020 OR #election2020 OR #potus OR #whitehouse"
 search_terms = search_terms_1 + search_terms_2 + search_terms_3
 
 
