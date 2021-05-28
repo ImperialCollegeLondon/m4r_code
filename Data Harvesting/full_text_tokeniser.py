@@ -13,7 +13,34 @@ import re
 
 # This is the file path for the pretrained GloVe embeddings 
 path_to_m4r = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\"
-path_to_embeddings = path_to_m4r + "GloVe\\glove.twitter.27B\\glove.twitter.27B.25d.txt"
+path_to_embeddings = path_to_m4r + "m4r_data\\glove.twitter.27B\\glove.twitter.27B.25d.txt"
+
+# Smiley Faces for regex (regular expression)
+# From stanford nlp glove ruby code (https://nlp.stanford.edu/projects/glove/preprocess-twitter.rb)
+eyes = "[8:=;]"
+nose = "['`\-]?"
+
+# Dictionaries of various emoji categories:
+# <smile>
+smile_set = {"😀","😃","😄","😁","🙂","😉","😊","😇","🥰","😍","🤩","☺",
+             "😋","😛","🤗","😌","🥳","😎", ":)", "(:", ":-)", "(-:", "8)", "^.^", "^_^", ":]", "[:"}
+
+# <heart>
+heart_set = {"💘","💝","💖","💗","💓","💞","💕","💟","❣","💔","❤","🧡",
+             "💛","💚","💙","💜","🤎","🖤","🤍", "<3"}
+
+# <lolface>
+lol_set = {"😆","😅","🤣","😂", "😝", "🤪", "😜", "🤭", ":D", ":-D", ":P", ":p", ";)", ";-)"}
+
+# <neutralface>
+neutral_set = {"😐", "😑", "😶", "🤨", "🤐", "🤔", "😬", "😕", "🙃", ":|", "-_-", ":-|"}
+
+# <angryface> # apparently not in glove? but sadface is
+angry_set= {"😤","😡","😠","🤬","👿", "😞", "😥", "😟", "😓", "😢", "😭", "🙁", "☹️", "😩", "😰", "😨", "😠", ":(", "):", ">:(", "):<", ":'(", ")':", ">_<", ":'-(", ")-':", ":-(", ")-:", ":/", ":-/", "/:"}
+
+# <sadface>
+
+#reactions_set = set(list(smile_set) + list(heart_set) + list(lol_set) + list(neutral_set) + list(angry_set))
 
 # Creating the set of emojis that appear in the GloVe embeddings:
 glove_emojis = set()
@@ -23,13 +50,7 @@ with open(path_to_embeddings, 'r', encoding = "utf-8") as t:
         word = values[0]
         if word in emoji.UNICODE_EMOJI:
             glove_emojis.add(word)
-
-# Smiley Faces for regex (regular expression)
-# From stanford nlp glove ruby code (https://nlp.stanford.edu/projects/glove/preprocess-twitter.rb)
-eyes = "[8:=;]"
-nose = "['`\-]?"
-
-
+            
 
 def check_url(token):
     """
@@ -69,11 +90,15 @@ def check_mention(token):
         return False
 
 
+emoticons = {":(", "):", ">:(", "):<", ":'(", ")':", ">_<", ":|", "-_-",  ":D", ":-D", ":)", "(:", ":-)", "(-:", "<3", ">_<", ":'-(", ")-':", ":-(", ")-:", ":/", ":-/", "/:", ":-|", ":P", ":p", ";)", ";-)", "8)", "^.^", "^_^", ":]", "[:"}
+
 def check_emoji(token):
     """
     Checks if a token is an emoji
     """
     if token in emoji.UNICODE_EMOJI:
+        return True
+    elif token in emoticons:
         return True
     else:
         return False
@@ -81,7 +106,7 @@ def check_emoji(token):
 
 def check_hashtag(token):
     """
-    Checks if a token is an emoji
+    Checks if a token is a hashtag
     """
     if len(token)>1:
         if token[0] == "#" and token[1] != "#":
@@ -141,6 +166,20 @@ def check_emoticon(token):
     return False
 
 
+def replace_emoji(tok):
+    if tok in smile_set:
+        return "<smile>"
+    elif tok in heart_set:
+        return "<heart>"
+    elif tok in angry_set:
+        return "<sadface>" # "<angryface>"
+    elif tok in lol_set:
+        return "<lolface>"
+    elif tok in neutral_set:
+        return "<neutralface>"
+    else:
+        return "<emoji>" # not an actual token, but will be useful to count number of emojis...
+    
 
 
 
@@ -164,7 +203,7 @@ def text_tokeniser(text, preserve_case = False):
             if token in glove_emojis:
                 new_token_list.append(token)
             else:
-                new_token_list.append("<emoji>")
+                new_token_list.append( replace_emoji(token) )
         elif check_emoticon(token):
             new_token_list.append("emoticon") # change!
         elif check_hashtag(token):
@@ -183,7 +222,7 @@ def text_tokeniser(text, preserve_case = False):
                 new_token_list.append("<repeat>")
                 new_token_list.append(token)
                 
-    return new_token_list
+    return " ".join(new_token_list)
                 
             
         
