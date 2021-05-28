@@ -6,15 +6,10 @@ What it does:
 Collects tweets based on election hashtag searchterms
 
 Parameters to change before running:
-overwrite:
-    True => overwrites the file us_election_data.csv
-    False => appends the data to the file us_election_data.csv
-new_header:
-    True => creates a new header row (automatically True if overwriting)
-    False => doesn't create a new header row (leave False if overwrite = False)
 n:
     maximum number of tweets to collect upon running the code
     set to None if you want to max out at the Twitter rate limit
+file:
 """
 
 # *- NUMBER OF TWEETS TO COLLECT -*
@@ -30,8 +25,8 @@ from full_text_tokeniser import text_tokeniser
 
 # *- FILE PATHS -*
 m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
-us_file  = m4r_data + "us_election_data.p" # file save path
-#ga_file  = m4r_data + "ga_election_data.p"
+file  = "us_election_data.p" # file name
+#file  = "ga_election_data.p"
 
 
 # *- TWITTER API KEYS -*
@@ -123,22 +118,20 @@ while not stop:
         break
 
 # *- PROCESSING FEATURES -*
-
+# Tweets that are not retweets:
 df_entire["hashtag_count"] = df_entire["entities.hashtags"].str.len() # counting number of hashtags in tweet
 df_entire["mention_count"] = df_entire["entities.user_mentions"].str.len() # counting number of mentions in tweet
 df_entire["url_count"]     = df_entire["entities.urls"].str.len() # counting number of urls in tweet
 df_entire["tokenised_text"]= df_entire["full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
 
 try:
-    df = pickle.load(open(us_file, "rb")) # Loading dataframe of previously collected tweets
-    # df = pickle.load(open(ga_file, "rb"))
+    df = pickle.load(open(m4r_data + file, "rb")) # Loading dataframe of previously collected tweets
 except:
     df = pd.DataFrame()
     
 df = pd.concat([df, df_entire], ignore_index = True) # Appending to previously collected tweets
 
-# pickle.dump(df, open(us_file, "wb")) # Saving dataframe
-# pickle.dump(df, open(ga_file, "wb"))
+# pickle.dump(df, open(m4r_data + file, "wb")) # Saving dataframe
 
 
 
