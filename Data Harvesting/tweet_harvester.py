@@ -23,7 +23,7 @@ overwrite = False
 new_header = False
 
 # *- NUMBER OF TWEETS TO COLLECT? -*
-n = 40000
+n = 50000
 
 
 
@@ -53,7 +53,8 @@ import time
 
 # *- FILE PATHS -*
 folder_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting"
-file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\us_election_data.csv"
+#file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\Collected Tweets\\us_election_data.csv" # for us_elections_data.csv
+file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\Collected Tweets\\georgia_election_data.csv"
 cwd = os.getcwd()
 if folder_path not in sys.path:
     sys.path.append(folder_path)
@@ -106,13 +107,18 @@ from tweet_tokeniser import tweet_tokeniser
 # *- SEARCH PARAMETERS -*
 today = str(date.today())
 count = 100
-search_terms_1 = "#trump OR #donaldtrump OR #trump2020 OR #votetrump OR #trumppence2020 OR #gop OR #republicans OR "
-search_terms_2 = "#biden OR #joebiden OR #biden2020 OR #votebiden OR #bidenharris2020 OR #votedems OR #democrats OR "
-search_terms_3 = "#uselection OR #uselection2020 OR #presidentialelection2020 OR #election2020 OR #potus OR #whitehouse"
-search_terms = search_terms_1 + search_terms_2 + search_terms_3
+## Search parameters for us_election_data.csv
+# search_terms_1 = "#trump OR #donaldtrump OR #trump2020 OR #votetrump OR #trumppence2020 OR #gop OR #republicans OR "
+# search_terms_2 = "#biden OR #joebiden OR #biden2020 OR #votebiden OR #bidenharris2020 OR #votedems OR #democrats OR "
+# search_terms_3 = "#uselection OR #uselection2020 OR #presidentialelection2020 OR #election2020 OR #potus OR #whitehouse"
+#search_terms = search_terms_1 + search_terms_2 + search_terms_3
+
+search_terms_georgia_1 = "#georgia OR #gapol OR #ossoff OR #warnock OR #perdue OR #loeffler OR #georgiarunoffs OR #gasen OR #gasenateraces OR "
+search_terms_georgia_2 = "@ossoff OR @sendavidperdue OR @kloeffler OR @reverendwarnock"
+search_terms_post_election = "#votersuppression OR "
 
 
-
+search_terms = search_terms_georgia_1 + search_terms_georgia_2
 
 
 
