@@ -16,54 +16,26 @@ n:
     maximum number of tweets to collect upon running the code
     set to None if you want to max out at the Twitter rate limit
 """
-# *- OVERWRITE? -*
-overwrite = False
 
-# *- INITIALISE HEADER? -*
-new_header = False
+# *- NUMBER OF TWEETS TO COLLECT -*
+n = 5
 
-# *- NUMBER OF TWEETS TO COLLECT? -*
-n = 50000
-
-
-
-
-
-
-
-
-
-
-# *- PACKAGES -*
-import tweepy
-import sys, os
+# *- IMPORTING PACKAGES -*
+import sys, time, tweepy, pickle
 from datetime import date
-import csv
-import time
-
-
-
-
-
-
-
-
-
-
+import pandas as pd
+# Importing tokeniser function:
+sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting")
+from full_text_tokeniser import text_tokeniser
 
 # *- FILE PATHS -*
-folder_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting"
-#file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\Collected Tweets\\us_election_data.csv" # for us_elections_data.csv
-file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\Collected Tweets\\georgia_election_data.csv"
-cwd = os.getcwd()
-if folder_path not in sys.path:
-    sys.path.append(folder_path)
-
-
-    
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
+us_file  = m4r_data + "us_election_data.p" # file save path
+#ga_file  = m4r_data + "ga_election_data.p"
 
 
 # *- TWITTER API KEYS -*
+# Importing API keys (these won't appear on GitHub - see Twitter API docs)
 try:
     import config
     consumer_key = config.consumer_key
@@ -73,345 +45,101 @@ try:
 except:
     print("Authentication information is missing")
 
-
-
-
-
-    
 # *- ACCESSING TWITTER API -*
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
-
-
-
-
-
-
-
-
-
-
-# Importing tokeniser function:
-from tweet_tokeniser import tweet_tokeniser
-
-
-
-
-
-
-
-
-
 # *- SEARCH PARAMETERS -*
-today = str(date.today())
-count = 100
-## Search parameters for us_election_data.csv
-# search_terms_1 = "#trump OR #donaldtrump OR #trump2020 OR #votetrump OR #trumppence2020 OR #gop OR #republicans OR "
-# search_terms_2 = "#biden OR #joebiden OR #biden2020 OR #votebiden OR #bidenharris2020 OR #votedems OR #democrats OR "
-# search_terms_3 = "#uselection OR #uselection2020 OR #presidentialelection2020 OR #election2020 OR #potus OR #whitehouse"
-#search_terms = search_terms_1 + search_terms_2 + search_terms_3
+# Search terms for the US Election:
+search_terms = "#trump OR #donaldtrump OR #trump2020 OR #votetrump OR #trumppence2020 OR #gop OR #republicans OR #biden OR #joebiden OR #biden2020 OR #votebiden OR #bidenharris2020 OR #votedems OR #democrats OR #uselection OR #uselection2020 OR #presidentialelection2020 OR #election2020 OR #potus OR #whitehouse"
+# # Alternative search terms for the Georgia Election:
+# search_terms = "#georgia OR #gapol OR #ossoff OR #warnock OR #perdue OR #loeffler OR #georgiarunoffs OR #gasen OR #gasenateraces OR @ossoff OR @sendavidperdue OR @kloeffler OR @reverendwarnock"
+today = str(date.today()) # today's date and time (date and time for the search)
+count = 100 # number of tweets to search for each iteration of the Tweepy Cursor
 
-search_terms_georgia_1 = "#georgia OR #gapol OR #ossoff OR #warnock OR #perdue OR #loeffler OR #georgiarunoffs OR #gasen OR #gasenateraces OR "
-search_terms_georgia_2 = "@ossoff OR @sendavidperdue OR @kloeffler OR @reverendwarnock"
-search_terms_post_election = "#votersuppression OR "
-
-
-search_terms = search_terms_georgia_1 + search_terms_georgia_2
-
-
-
-
-
-
-
-
-# *- NUMBER OF TWEETS TO COLLECT -*
-#n = None
-nt = 0
-
-
-
-
-
-
-
-
-
+# *- METADATA/FEATURE WE WANT TO COLLECT-*
+# These have the same names as those used by the Twitter API and Tweepy
+features = [
+    'created_at', 'id', 'full_text',
+    'in_reply_to_status_id', 'in_reply_to_user_id', 'in_reply_to_screen_name', 'is_quote_status',
+    'retweet_count', 'favorite_count', 'lang',
+    'entities.hashtags', 'entities.symbols',
+    'entities.user_mentions', 'entities.urls', 'user.id',
+    'user.name', 'user.screen_name', 'user.location', 'user.description',
+    'user.protected', 'user.followers_count', 'user.friends_count',
+    'user.listed_count', 'user.created_at', 'user.favourites_count',
+    'user.utc_offset', 'user.geo_enabled',
+    'user.verified', 'user.statuses_count', 'user.lang',
+    'user.default_profile', 'user.default_profile_image'
+    ]
+# Additional Tweet Metadata: specifically if the tweet is a retweet
+extended_features = features + [
+    "retweeted_status.id",
+    "retweeted_status.full_text",
+    'retweeted_status.entities.hashtags',
+    'retweeted_status.entities.symbols',
+    'retweeted_status.entities.user_mentions',
+    'retweeted_status.entities.urls',
+    'retweeted_status.user.id',
+    'retweeted_status.user.screen_name'
+    ]
 
 # *- TWEEPY ITERATOR OBJECT -*
+# Searches for tweets corresponding to search terms - up to 100 at a time
 c = tweepy.Cursor(api.search, q=search_terms, lang='en', since=today, count=count, tweet_mode='extended').items()
 
+# *- INITIALISING -*
+stop = False # Boolean object to determine when to stop the search
+nt = 0 # Count object to keep track of how many tweets we have collected so far
+df_entire = pd.DataFrame() # Pandas Dataframe to store tweets and metadata
 
-
-
-
-
-
-
-
-
-
-
-
-# Boolean object to determine when to stop
-stop = False
-
-
-
-
-
-
-# Data Labels
-tweet_headers = [
-    'full_text',
-    'tokenised_text',
-    'tweet_id',
-    'user_id',
-    'created_at'
-    ]
-
-tweet_metadata_headers = [
-    'retweet_count',
-    'favourite_count',
-    'length_of_tweet',
-    'num_hashtags',
-    'num_urls',
-    'num_media',
-    'num_mentions',
-    'num_emojis',
-    'is_retweet',
-    'is_quote_status',
-    'tweet_source'
-    ]
-
-user_headers = [
-    'user_screen_name',
-    'user_name',
-    'user_is_verified',
-    'user_created_at',
-    'user_followers_count',
-    'user_friends_count',
-    'user_listed_count',
-    'user_favourites_count',
-    'user_statuses_count',
-    'user_default_profile',
-    'user_default_profile_image',
-    'user_default_profile_banner',
-    'user_description',
-    'user_location',
-    'user_url',
-    'user_profile_banner_url',
-    'user_profile_image_url',
-    'user_lang',
-    'user_time_zone',
-    'user_geo_enabled',
-    'user_contributors_enabled',
-    'user_has_extended_profile',
-    ]
-
-tweet_interaction_headers = [
-    'in_reply_to_status_id',
-    'in_reply_to_user_id',
-    'retweet_status_id',
-    'retweet_author_id',
-    'quote_status_id',
-    ]
-
-header = tweet_headers + tweet_metadata_headers + user_headers + tweet_interaction_headers
-
-
-
-
-
-
-
-
-
-
-# *- CHECKING THAT THE FILE EXISTS
-try:
-    with open(file_path, 'x', newline='', encoding = 'utf-8') as w:
-        writer = csv.writer(w)
-        writer.writerow(header)
-except:
-    pass
-
-
-
-
-
-
-
-
-# *- COLLECTING AND RECORDING TWEETS -*
-mode = 'w' if overwrite else 'a'
-with open(file_path, mode=mode, newline='', encoding="utf-8") as w:
-    writer = csv.writer(w)
-    if new_header or overwrite:
-        writer.writerow(header)
-    while not stop:
-        try:
-            # Retrieving the next tweet in the iterator
-            tweet = next(c)
-            
-            # Retweet?
-            try:
-                actual_status = tweet.retweeted_status
-                is_rt = True
-            except:
-                actual_status = tweet
-                is_rt = False
-                
-            full_text = actual_status.full_text
-            
-            num_hashtags = len(actual_status.entities["hashtags"])
-            
-            # Collecting URL data
-            url_data = []
-            for u in actual_status.entities["urls"]:
-                url_data.append([u["url"], u["indices"][0], u["indices"][1]])
-            if "media" in actual_status.entities:
-                num_media = len(actual_status.entities["media"])
-                for u in actual_status.entities["media"]:
-                    url_data.append([u["url"], u["indices"][0], u["indices"][1]])
-            else:
-                num_media = 0
-            
-            
-            # Collecting user_mentions_data
-            user_mentions_data = []
-            for u in actual_status.entities["user_mentions"]:
-                user_mentions_data.append(u["screen_name"])
-                
-            # Tokenising the tweet
-            tokenised_text, num_hashtags, num_mentions, num_urls, num_emojis = tweet_tokeniser(full_text, url_data, user_mentions_data)
-            
-            # Gathering interaction data
-            rt_id = None
-            rt_user = None
-            qt_id = None
-            if is_rt:
-                rt_id = actual_status.id
-                rt_user = tweet.author.id
-            if tweet.is_quote_status:
-                try:
-                    qt_id = tweet.quoted_status_id
-                except:
-                    qt_id = None
-                    
-                
-            
-            # Checking if there is a profile banner or not:
-            try:
-                user_prof_banner = tweet.user.profile_banner_url
-                user_default_banner = True
-            except:
-                user_prof_banner = None
-                user_default_banner = False
-            
-            
-            # *- COMPILING THE DATA -*
-            tweet_data = [
-                full_text,
-                tokenised_text,
-                tweet.id,
-                tweet.user.id,
-                tweet.created_at
-                ]
-            
-            tweet_metadata = [
-                tweet.retweet_count,
-                tweet.favorite_count,
-                tweet.display_text_range[1],
-                num_hashtags,
-                num_urls - num_media,
-                num_media,
-                num_mentions,
-                num_emojis,
-                is_rt,
-                tweet.is_quote_status,
-                tweet.source
-                ]
-            
-            tweet_interaction_data = [
-                tweet.in_reply_to_status_id,
-                tweet.in_reply_to_user_id,
-                rt_id,
-                rt_user,
-                qt_id
-                ]
-            
-            try:
-                user_data = [
-                    tweet.user.screen_name,
-                    tweet.user.name,
-                    tweet.user.verified,
-                    tweet.user.created_at,
-                    tweet.user.followers_count,
-                    tweet.user.friends_count,
-                    tweet.user.listed_count,
-                    tweet.user.favourites_count,
-                    tweet.user.statuses_count,
-                    tweet.user.default_profile,
-                    tweet.user.default_profile_image,
-                    user_default_banner,
-                    tweet.user.description,
-                    tweet.user.location,
-                    tweet.user.url,
-                    user_prof_banner,
-                    tweet.user.profile_image_url_https,
-                    tweet.user.lang,
-                    tweet.user.time_zone,
-                    tweet.user.geo_enabled,
-                    tweet.user.contributors_enabled,
-                    tweet.user.has_extended_profile
-                    ]
-            except:
-                user_data = [
-                    tweet.user.screen_name,
-                    tweet.user.name,
-                    tweet.user.verified,
-                    tweet.user.created_at,
-                    tweet.user.followers_count,
-                    tweet.user.friends_count,
-                    tweet.user.listed_count,
-                    tweet.user.favourites_count,
-                    tweet.user.statuses_count,
-                    tweet.user.default_profile,
-                    tweet.user.default_profile_image,
-                    user_default_banner,
-                    tweet.user.description,
-                    tweet.user.location,
-                    tweet.user.url,
-                    user_prof_banner,
-                    tweet.user.profile_image_url_https,
-                    tweet.user.lang,
-                    tweet.user.time_zone,
-                    tweet.user.geo_enabled,
-                    tweet.user.contributors_enabled,
-                    None
-                    ]
-            
-
-
-            row = tweet_data + tweet_metadata + user_data + tweet_interaction_data
-            writer.writerow(row)
-            nt += 1
-            if nt == n:
-                print(n, "tweets collected, stopping")
-                break
-        # handle rate limit by waiting till it resets
-        except tweepy.TweepError:
-            print("max rate hit, sleeping, press any key to interrupt,\n", nt, "tweets collected so far" )
-            for i in range(60):
-                try:
-                    time.sleep(15)
-                except KeyboardInterrupt:
-                    stop = True
-                    break
-            continue
-        except StopIteration:
-            print(nt, "tweets collected, end of search")
+# *- BEGINNING THE SEARCH -*
+while not stop:
+    try:
+        tweet = next(c) # Retrieving the next tweet in the iterator
+        dfj = pd.json_normalize(tweet._json) # Converting to a dataframe
+        try: # Keeping only relevant features (if it is a retweet)
+            dfj = dfj[extended_features]
+        except: # Keeping only relevant features (if it is NOT a retweet)
+            dfj = dfj[features]
+        df_entire = df_entire.append(dfj, ignore_index = True) # Appending to the main dataframe
+        nt += 1 # Updating count
+        if nt == n: # If we have collected enough tweets, we stop
+            print(n, "tweets collected, stopping")
             break
+    # Handling rate limit - wait up to 15 mins before attempting to search again
+    except tweepy.TweepError:
+        print("max rate hit, sleeping, press any key to interrupt,\n", nt, "tweets collected so far" )
+        for i in range(60):
+            try:
+                time.sleep(15)
+            except KeyboardInterrupt:
+                stop = True
+                break
+        continue
+    except StopIteration: # Rate Limit Exceeded and won't refresh - simply stop the search
+        print(nt, "tweets collected, end of search")
+        break
+
+# *- PROCESSING FEATURES -*
+
+df_entire["hashtag_count"] = df_entire["entities.hashtags"].str.len() # counting number of hashtags in tweet
+df_entire["mention_count"] = df_entire["entities.user_mentions"].str.len() # counting number of mentions in tweet
+df_entire["url_count"]     = df_entire["entities.urls"].str.len() # counting number of urls in tweet
+df_entire["tokenised_text"]= df_entire["full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
+
+try:
+    df = pickle.load(open(us_file, "rb")) # Loading dataframe of previously collected tweets
+    # df = pickle.load(open(ga_file, "rb"))
+except:
+    df = pd.DataFrame()
+    
+df = pd.concat([df, df_entire], ignore_index = True) # Appending to previously collected tweets
+
+# pickle.dump(df, open(us_file, "wb")) # Saving dataframe
+# pickle.dump(df, open(ga_file, "wb"))
+
+
+
+
