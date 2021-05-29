@@ -3,51 +3,36 @@ Title:
 User Harvester
 
 What it does:
-Collects tweets based on user ID's
+Collects tweets based on user IDs
+(i.e. to create reply or retweet networks)
+(also to manually collect tweets from bot datasets)
 
 Parameters to change before running:
-overwrite:
-    True => overwrites the file 
-    False => appends the data
-new_header:
-    True => creates a new header row (automatically True if overwriting)
-    False => doesn't create a new header row (leave False if overwrite = False)
 n:
-    maximum number of tweets to collect upon running the code
-    set to None if you want to max out at the Twitter rate limit
+    maximum number of tweets to collect per user
 """
-# *- OVERWRITE? -*
-overwrite = False
+# *- NUMBER OF TWEETS TO COLLECT PER USER -*
+n = 5
 
-# *- INITIALISE HEADER? -*
-new_header = False
+# *- USER ID LIST -*
+# list of accounts we want to extract tweets from
+user_ids = [30354991, 939091, 1249982359] # example
 
-# *- NUMBER OF TWEETS TO COLLECT? -*
-n = 200
-
-# *- PACKAGES -*
-import tweepy
-import sys, os
-from datetime import date
-import csv
-import time
+# *- IMPORTING PACKAGES -*
+import sys, tweepy, pickle
 import pandas as pd
-import pickle
-import json
-
-
+import numpy as np
+# Importing tokeniser function:
+sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting")
+from full_text_tokeniser import text_tokeniser
 
 # *- FILE PATHS -*
-# current folder we're in:
-folder_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting"
-# file to write to:
-file_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\Collected Tweets\\cresci_rtbust_2019.csv"
-# Adding current directory so that we can access the Twitter API keys
-sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Harvesting")
-# Indiana dataset...
-path_to_indiana = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\Indiana Dataset\\"
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
+file  = "user_collected_tweets.p" # change
+
 
 # *- TWITTER API KEYS -*
+# Importing API keys (these won't appear on GitHub - see Twitter API docs)
 try:
     import config
     consumer_key = config.consumer_key
@@ -56,314 +41,98 @@ try:
     access_token_secret = config.access_token_secret
 except:
     print("Authentication information is missing")
-    
+
 # *- ACCESSING TWITTER API -*
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
-# *- COLLECTING USERS FROM REPLY NETWORK THAT DON'T HAVE ACCOUNT DATA -* #
-def collect_reply_network():
-    users_all = None
-    # SEE M4R_REPOSITORY\\OTHER\\10_APRIL_2021.PY #
+# *- METADATA/FEATURE WE WANT TO COLLECT-*
+# These have the same names as those used by the Twitter API and Tweepy
+# User features
+user_features =  [
+    'user.id',
+    'user.name', 'user.screen_name', 'user.location', 'user.description',
+    'user.protected', 'user.followers_count', 'user.friends_count',
+    'user.listed_count', 'user.created_at', 'user.favourites_count',
+    'user.utc_offset', 'user.geo_enabled',
+    'user.verified', 'user.statuses_count', 'user.lang',
+    'user.default_profile', 'user.default_profile_image'
+    ]
+# Tweet metadata
+features = [
+    'created_at', 'id', 'full_text',
+    'in_reply_to_status_id', 'in_reply_to_user_id', 'in_reply_to_screen_name', 'is_quote_status',
+    'retweet_count', 'favorite_count', 'lang',
+    'entities.hashtags', 'entities.symbols',
+    'entities.user_mentions', 'entities.urls'] + user_features
+# Additional Tweet Metadata: specifically if the tweet is a retweet
+extended_features = features + [
+    "retweeted_status.id",
+    "retweeted_status.full_text",
+    'retweeted_status.entities.hashtags',
+    'retweeted_status.entities.symbols',
+    'retweeted_status.entities.user_mentions',
+    'retweeted_status.entities.urls',
+    'retweeted_status.user.id',
+    'retweeted_status.user.screen_name'
+    ]
 
-
-
-# *- COLLECTING CRESCI_RTBUST -*
-def collect_cresci_rtbust():
-    users_cresci_rtbust = pd.read_csv(path_to_indiana + "cresci-rtbust-2019_labels.tsv", sep = "\t", header = None)
-    users_cresci_rtbust.columns = ["user_id", "class"]
-    user_ids = users_cresci_rtbust["user_id"].to_numpy()
-    # user_ids = ["390617262"] # bot account, test of just one
-    # user_ids = [390617262, 8972349871603847]
+if n > 0:
+    # *- INITIALISING -*
+    df_entire = pd.DataFrame()
     
-    
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    
-    for i, u in enumerate(user_ids):
+    # *- BEGINNING RETRIEVAL -*
+    for i, ID in enumerate(user_ids):
+        # retrieving the i-th user_id
+        statuses = api.user_timeline(user_id = ID, count = n, include_rts = True, tweet_mode = 'extended', wait_on_rate_limit = True, wait_on_rate_limit_notify = True)
+        json_data = [r._json for r in statuses] # Converting to JSON data
+        dfj = pd.json_normalize(json_data) # Converting to a pandas dataframe
         try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
+            dfj = dfj[extended_features] # Keeping only relevant features (retweet)
         except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_cresci-rtbust-2019_tweets.p" , "wb"))
-    print("Done")
-    return collected_user_tweets
+            dfj = dfj[features] # Keeping only relevant features (non-retweet)
+        df_entire = df_entire.append(dfj, ignore_index = True) # appending batch of tweets to dataframe
+        sys.stdout.write("\rReading " + str(i+1) + " out of " + str(len(user_ids)))
+    
+    # *- PROCESSING FEATURES -*
+    # Retrieving index of tweets that are not retweets:
+    nonrt_index = df_entire[df_entire["retweeted_status.id"].isna()].index
+    # Retrieving index of tweets that are retweets:
+    rt_index    = df_entire[df_entire["retweeted_status.id"].isna() == False].index
+    # Retrieving counts for hashtags, mentions, and urls for non retweets:
+    df_entire.loc[nonrt_index, "hashtag_count"] = df_entire.loc[nonrt_index, "entities.hashtags"].str.len() # counting number of hashtags in tweet
+    df_entire.loc[nonrt_index, "mention_count"] = df_entire.loc[nonrt_index, "entities.user_mentions"].str.len() # counting number of mentions in tweet
+    df_entire.loc[nonrt_index, "url_count"]     = df_entire.loc[nonrt_index, "entities.urls"].str.len() # counting number of urls in tweet
+    df_entire.loc[nonrt_index, "tokenised_text"]= df_entire.loc[nonrt_index, "full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
+    # Retrieving counts for hashtags, mentions, and urls for retweets:
+    # We have to separately do this because retweet full texts are truncated
+    df_entire.loc[rt_index, "hashtag_count"] = df_entire.loc[rt_index, "retweeted_status.entities.hashtags"].str.len() # counting number of hashtags in tweet
+    df_entire.loc[rt_index, "mention_count"] = df_entire.loc[rt_index, "retweeted_status.entities.user_mentions"].str.len() + 1 # counting number of mentions in tweet and adjusting by adding 1 (since RT @user:)
+    df_entire.loc[rt_index, "url_count"]     = df_entire.loc[rt_index, "retweeted_status.entities.urls"].str.len() # counting number of urls in tweet
+    df_entire.loc[rt_index, "tokenised_text"]= "rt <user> : " + df_entire.loc[rt_index, "retweeted_status.full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
+    # "Un-truncating" the retweeted status
+    df_entire.loc[rt_index, "full_text"]     = df_entire.loc[rt_index, "full_text"].str.split().apply(lambda x: str(x[0]) + " " + str(x[1]) + " ") + df_entire.loc[rt_index, "retweeted_status.full_text"]
+    
+    # pickle.dump(df_entire, open(folder + file, "wb")) # Saving dataframe
+    
+elif n == 0:
+    # *- INITIALISING -*
+    df_entire = pd.DataFrame()
+    num_batches = int(np.ceil(len(user_ids) / 100))
+    
+    # *- BEGINNING RETRIEVAL -*
+    for i in range(num_batches):
+        sys.stdout.write("\rRetrieving batch " + str(i) + " out of " + str(num_batches))
+        users = api.lookup_users(user_ids = user_ids[i*100 : (i+1)*100])
+        json_data = [u._json for u in users]
+        dfj = pd.json_normalize(json_data)
+        df_entire = df_entire.append( dfj[user_features] , ignore_index = True)
+        #full_users.drop(labels = droplab, axis = 1, inplace = True)
+    
+    print("\n",len(df_entire), "found out of", len(set(user_ids)))
 
-# *- COLLECTING MIDTERM 2018 -*
-def collect_midterm_2018():
-    """
-    This is a HUGE dataset... there are 50538 total accounts
-    - the FIRST 42446 users are bots
-    - the LAST 8092 users are human
-    So, we'll collect them in batches... of 5,000?
-    ==========================================================================
-    Out of the 42,446 bot users, only 44 of them still are 'active',
-    these are stored in the file valid_midterm_2018_bot_ids.p
-    """
-    users_midterm_2018 = pd.read_csv(path_to_indiana + "midterm-2018_labels.tsv", sep = "\t", header = None)
-    users_midterm_2018.columns = ["user_id", "class"]
-    # filtering out human users
-    users_midterm_2018 = users_midterm_2018[users_midterm_2018["class"] == "bot"]
-    # shuffling the remaining bot users (in a set random seed state)
-    users_midterm_2018 = users_midterm_2018.sample(frac = 1.0, random_state = 101)
-    human_user_ids = users_midterm_2018["user_id"].to_numpy()
-    
-    user_ids = pickle.load(open(path_to_indiana  + "valid_midterm_2018_bot_ids.p", "rb"))
+    # pickle.dump(df_entire, open(folder + file, "wb"))
     
     
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    unskipped_ids = []
-    
-    for i, u in enumerate(user_ids):
-        try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
-            unskipped_ids.append(u)
-        except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_midterm_2018_tweets.p" , "wb"))
-    print("Done")
-    print(len(skip_ids), "skipped")
-    return collected_user_tweets #, skip_ids, unskipped_ids
-
-# *- COLLECTING GILANI 2O17 -*
-def collect_gilani():
-    users_gilani = pd.read_csv(path_to_indiana + "gilani-2017_labels.tsv", sep = "\t", header = None)
-    users_gilani.columns = ["user_id", "class"]
-    user_ids = users_gilani["user_id"].to_numpy()
-    # user_ids = ["390617262"] # bot account, test of just one
-    # user_ids = [390617262, 8972349871603847]
-    
-    
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    
-    for i, u in enumerate(user_ids):
-        try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
-        except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_gilani-2017_tweets.p" , "wb"))
-    print("Done")
-    print(len(skip_ids), "skipped, out of", len(user_ids), "total users")
-    return collected_user_tweets
-
-
-# *- COLLECTING POLITICAL BOTS 2019 -*
-def collect_political_bots_2019():
-    users_political = pd.read_csv(path_to_indiana + "political-bots-2019.tsv", sep = "\t", header = None)
-    users_political.columns = ["user_id", "class"]
-    user_ids = users_political["user_id"].to_numpy()
-    # user_ids = ["390617262"] # bot account, test of just one
-    # user_ids = [390617262, 8972349871603847]
-    
-    
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    useable_ids = []
-    
-    for i, u in enumerate(user_ids):
-        try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
-            useable_ids.append(u)
-        except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_political-bots-2019_tweets.p" , "wb"))
-    print("Done")
-    print(len(skip_ids), "skipped, out of", len(user_ids), "total users")
-    return collected_user_tweets, useable_ids
-
-
-# *- COLLECTING ASTROTURF 2020 -*
-def collect_astroturf_2020():
-    users_astroturf = pd.read_csv(path_to_indiana + "astroturf.tsv", sep = "\t", header = None)
-    users_astroturf.columns = ["user_id", "class"]
-    user_ids = users_astroturf["user_id"].to_numpy()
-    # user_ids = ["390617262"] # bot account, test of just one
-    # user_ids = [390617262, 8972349871603847]
-    
-    
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    useable_ids = []
-    
-    for i, u in enumerate(user_ids):
-        try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
-            useable_ids.append(u)
-        except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_astroturf_tweets.p" , "wb"))
-    print("Done")
-    print(len(skip_ids), "skipped, out of", len(user_ids), "total users")
-    return collected_user_tweets, useable_ids
-
-# *- COLLECTING VAROL 2017 -*
-def collect_varol_2017():
-    users_varol = pd.read_csv(path_to_indiana + "varol-2017.tsv", sep = "\t", header = None)
-    users_varol.columns = ["user_id", "class"]
-    user_ids = users_varol["user_id"].to_numpy()
-    # user_ids = ["390617262"] # bot account, test of just one
-    # user_ids = [390617262, 8972349871603847]
-    
-    
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    useable_ids = []
-    
-    for i, u in enumerate(user_ids):
-        try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
-            useable_ids.append(u)
-        except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_varol-2017_tweets.p" , "wb"))
-    print("Done")
-    print(len(skip_ids), "skipped, out of", len(user_ids), "total users")
-    return collected_user_tweets, useable_ids
-
-# *- COLLECTING VAROL 2017 -*
-def collect_varol_2017_human():
-    users_varol = pd.read_csv(path_to_indiana + "varol-2017.tsv", delim_whitespace = True, header = None)
-    users_varol.columns = ["user_id", "class"]
-    # filtering to only contain the human users
-    users_varol = users_varol[users_varol["class"] == 0]
-    user_ids = users_varol["user_id"].to_numpy()
-    # user_ids = ["390617262"] # bot account, test of just one
-    # user_ids = [390617262, 8972349871603847]
-    
-    
-    collected_user_tweets = pd.DataFrame()
-    skip_ids = []
-    useable_ids = []
-    
-    for i, u in enumerate(user_ids):
-        try:
-            tweets = api.user_timeline(user_id = u, 
-                                       # 200 is the maximum allowed count
-                                       count = 200,
-                                       include_rts = True,
-                                       # Necessary to keep full_text 
-                                       # otherwise only the first 140 words are extracted
-                                       tweet_mode = 'extended',
-                                       wait_on_rate_limit = True,
-                                       wait_on_rate_limit_notify = True
-                                       )
-            json_data = [r._json for r in tweets]
-            dfj = pd.json_normalize(json_data)
-            collected_user_tweets = collected_user_tweets.append(dfj, ignore_index = True)
-            sys.stdout.write("\rReading " + str(i))
-            useable_ids.append(u)
-        except:
-            skip_ids.append(u)
-            sys.stdout.write("\rReading " + str(i))
-            
-    pickle.dump(collected_user_tweets, open( path_to_indiana + "collected_varol-2017_human_tweets.p" , "wb"))
-    print("Done")
-    print(len(skip_ids), "skipped, out of", len(user_ids), "total users")
-    return collected_user_tweets, useable_ids
-
-# Loading user data example
-def load_user_data():
-    """
-    Example of loading a json user file...
-    """
-    data = json.load(open(path_to_indiana + "midterm-2018_user_data.json", "r"))
-    dataframe = pd.json_normalize(data)
-    
-def load_users():
-    pass
-
-
 

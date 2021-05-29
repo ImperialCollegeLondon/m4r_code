@@ -7,9 +7,16 @@ Collects tweets based on election hashtag searchterms
 
 Parameters to change before running:
 n:
-    maximum number of tweets to collect upon running the code
+    MAXIMUM number of tweets to collect upon running the code
     set to None if you want to max out at the Twitter rate limit
+folder:
+    folder path to where we want to store to
 file:
+    file name we want to save to
+search_terms:
+    the terms we want to search for - use Twitter search notation
+    i.e. "#TRUMP OR #BIDEN" searches for tweets that contain EITHER hashtags
+    i.e. "#BIDEN AND #TRUMP" searches for tweets that contain BOTH hashtags
 """
 
 # *- NUMBER OF TWEETS TO COLLECT -*
@@ -24,7 +31,7 @@ sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Har
 from full_text_tokeniser import text_tokeniser
 
 # *- FILE PATHS -*
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
+folder = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
 file  = "us_election_data.p" # file name
 #file  = "ga_election_data.p"
 
@@ -137,13 +144,13 @@ df_entire.loc[rt_index, "tokenised_text"]= "rt <user> : " + df_entire.loc[rt_ind
 df_entire.loc[rt_index, "full_text"]     = df_entire.loc[rt_index, "full_text"].str.split().apply(lambda x: str(x[0]) + " " + str(x[1]) + " ") + df_entire.loc[rt_index, "retweeted_status.full_text"]
 
 # try:
-#     df = pickle.load(open(m4r_data + file, "rb")) # Loading dataframe of previously collected tweets
+#     df = pickle.load(open(folder + file, "rb")) # Loading dataframe of previously collected tweets
 # except:
 #     df = pd.DataFrame()
     
 # df = pd.concat([df, df_entire], ignore_index = True) # Appending to previously collected tweets
 
-# pickle.dump(df, open(m4r_data + file, "wb")) # Saving dataframe
+# pickle.dump(df, open(folder + file, "wb")) # Saving dataframe
 
 
 
