@@ -170,32 +170,24 @@ def get_nn(nfeats):
 
 def compare_italy_to_d1(save = False):
     """
-    Comparing training on JUST the Cresci Italian dataset to the D1 dataset
-    And compare OUT OF SAMPLE accuracy.
-    Explain that although the Cresci Italian dataset may have higher training
-    and testing scores, it is symptomatic of overfitting...
-    
-    ONLY USING ADABOOST...
+    Comparing AdaBoost classifier that has been trained on:
+        1. D2 Data Mixture (JUST the Cresci Italian dataset)
+        2. D1 Data Mixture (All datasets but Midterm 2018)
     """
-    scaling = StandardScaler()
-    
-    # Defining Classifiers
-    clf  = AdaBoostClassifier(n_estimators = 50, random_state = 25)
-    
-    # Names for pandas dataframe
-    criterion_names_ = ["Accuracy", "Precision", "Recall", "F1"]
-    criterion_names  = ["Train accuracy"] + ["Test " + i for i in criterion_names_] + ["OOS " + i for i in criterion_names_]
-    
-    # Stratified K Fold
+    scaling = StandardScaler() # scaler
+    clf  = AdaBoostClassifier(n_estimators = 50, random_state = 25) # untrained AdaBoost classifier
+    # Names of criteria:
+    criteria_names = ["Accuracy", "Precision", "Recall", "F1"]
+    criteria_names  = ["Train accuracy"] + ["Test " + i for i in criteria_names] + ["OOS " + i for i in criteria_names]
+    # Retrieving the training dataset:
     df = get_full_dataset()
     X1, y1 = get_X_y(D1, df, tr = 0, seed = 1097)
     X2, y2 = get_X_y(D2, df, tr = 0, seed = 1097)
     X_OOS, y_oos = get_X_y(D3, df, tr = 0, seed = 2077)
-    skf = StratifiedKFold(n_splits=5, shuffle = True, random_state = 1349*5*65*17)
-    
+    skf = StratifiedKFold(n_splits=5, shuffle = True, random_state = 1349*5*65*17) # Object to retrieve Stratified 5-Fold indices
+    # Initialising: empty score dataframe
     score_dataframe = pd.DataFrame()
-    
-    # Repeating training & testing on the different splits...
+    # Repeating training & testing on the different splits
     # D1
     f = 0
     for trn_index, tst_index in skf.split(X1, y1):
@@ -212,7 +204,7 @@ def compare_italy_to_d1(save = False):
         sf = pd.DataFrame(columns = ["Training Set", "Fold" , "Criterion" ,"Score"])
         sf["Training Set"] = ["D1"] * 9
         sf["Fold"] = [f] * 9
-        sf["Criterion"] = criterion_names
+        sf["Criterion"] = criteria_names
         
         clf.fit(X_trn, y_trn)
         sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
