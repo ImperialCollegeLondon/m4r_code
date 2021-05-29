@@ -118,18 +118,30 @@ while not stop:
         break
 
 # *- PROCESSING FEATURES -*
-# Tweets that are not retweets:
-df_entire["hashtag_count"] = df_entire["entities.hashtags"].str.len() # counting number of hashtags in tweet
-df_entire["mention_count"] = df_entire["entities.user_mentions"].str.len() # counting number of mentions in tweet
-df_entire["url_count"]     = df_entire["entities.urls"].str.len() # counting number of urls in tweet
-df_entire["tokenised_text"]= df_entire["full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
+# Retrieving index of tweets that are not retweets:
+nonrt_index = df_entire[df_entire["retweeted_status.id"].isna()].index
+# Retrieving index of tweets that are retweets:
+rt_index    = df_entire[df_entire["retweeted_status.id"].isna() == False].index
+# Retrieving counts for hashtags, mentions, and urls for non retweets:
+df_entire.loc[nonrt_index, "hashtag_count"] = df_entire.loc[nonrt_index, "entities.hashtags"].str.len() # counting number of hashtags in tweet
+df_entire.loc[nonrt_index, "mention_count"] = df_entire.loc[nonrt_index, "entities.user_mentions"].str.len() # counting number of mentions in tweet
+df_entire.loc[nonrt_index, "url_count"]     = df_entire.loc[nonrt_index, "entities.urls"].str.len() # counting number of urls in tweet
+df_entire.loc[nonrt_index, "tokenised_text"]= df_entire.loc[nonrt_index, "full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
+# Retrieving counts for hashtags, mentions, and urls for retweets:
+# We have to separately do this because retweet full texts are truncated
+df_entire.loc[rt_index, "hashtag_count"] = df_entire.loc[rt_index, "retweeted_status.entities.hashtags"].str.len() # counting number of hashtags in tweet
+df_entire.loc[rt_index, "mention_count"] = df_entire.loc[rt_index, "retweeted_status.entities.user_mentions"].str.len() + 1 # counting number of mentions in tweet and adjusting by adding 1 (since RT @user:)
+df_entire.loc[rt_index, "url_count"]     = df_entire.loc[rt_index, "retweeted_status.entities.urls"].str.len() # counting number of urls in tweet
+df_entire.loc[rt_index, "tokenised_text"]= "rt <user> : " + df_entire.loc[rt_index, "retweeted_status.full_text"].apply(lambda x: text_tokeniser(x)) # tokenising the tweet
+# "Un-truncating" the retweeted status
+df_entire.loc[rt_index, "full_text"]     = df_entire.loc[rt_index, "full_text"].str.split().apply(lambda x: str(x[0]) + " " + str(x[1]) + " ") + df_entire.loc[rt_index, "retweeted_status.full_text"]
 
-try:
-    df = pickle.load(open(m4r_data + file, "rb")) # Loading dataframe of previously collected tweets
-except:
-    df = pd.DataFrame()
+# try:
+#     df = pickle.load(open(m4r_data + file, "rb")) # Loading dataframe of previously collected tweets
+# except:
+#     df = pd.DataFrame()
     
-df = pd.concat([df, df_entire], ignore_index = True) # Appending to previously collected tweets
+# df = pd.concat([df, df_entire], ignore_index = True) # Appending to previously collected tweets
 
 # pickle.dump(df, open(m4r_data + file, "wb")) # Saving dataframe
 
