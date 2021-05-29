@@ -168,7 +168,7 @@ def get_nn(nfeats):
 
 # 4. COMPARING CLASSIFIERS ----------------------------------------------------
 
-def compare_italy_to_d1(save = False):
+def compare_D1_to_D2():
     """
     Comparing AdaBoost classifier that has been trained on:
         1. D2 Data Mixture (JUST the Cresci Italian dataset)
@@ -181,64 +181,38 @@ def compare_italy_to_d1(save = False):
     criteria_names  = ["Train accuracy"] + ["Test " + i for i in criteria_names] + ["OOS " + i for i in criteria_names]
     # Retrieving the training dataset:
     df = get_full_dataset()
-    X1, y1 = get_X_y(D1, df, tr = 0, seed = 1097)
-    X2, y2 = get_X_y(D2, df, tr = 0, seed = 1097)
     X_OOS, y_oos = get_X_y(D3, df, tr = 0, seed = 2077)
     skf = StratifiedKFold(n_splits=5, shuffle = True, random_state = 1349*5*65*17) # Object to retrieve Stratified 5-Fold indices
     # Initialising: empty score dataframe
     score_dataframe = pd.DataFrame()
     # Repeating training & testing on the different splits
-    # D1
-    f = 0
-    for trn_index, tst_index in skf.split(X1, y1):
-        f += 1
-        # Stratified Split
-        X_trn, X_tst = X1.iloc[trn_index], X1.iloc[tst_index]
-        y_trn, y_tst = y1.iloc[trn_index], y1.iloc[tst_index]
-        X_oos = X_OOS.copy() # so we don't "retransform" X_oos each time
-        
-        X_trn = scaling.fit_transform(X_trn)
-        X_tst = scaling.transform(X_tst)
-        X_oos = scaling.transform(X_oos)
-        
-        sf = pd.DataFrame(columns = ["Training Set", "Fold" , "Criterion" ,"Score"])
-        sf["Training Set"] = ["D1"] * 9
-        sf["Fold"] = [f] * 9
-        sf["Criterion"] = criteria_names
-        
-        clf.fit(X_trn, y_trn)
-        sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
-        
-        score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
-    # CRESCI17
-    f = 0
-    for trn_index, tst_index in skf.split(X2, y2):
-        f += 1
-        # Stratified Split
-        X_trn, X_tst = X2.iloc[trn_index], X2.iloc[tst_index]
-        y_trn, y_tst = y2.iloc[trn_index], y2.iloc[tst_index]
-        X_oos = X_OOS.copy() # so we don't "retransform" X_oos each time
-        
-        X_trn = scaling.fit_transform(X_trn)
-        X_tst = scaling.transform(X_tst)
-        X_oos = scaling.transform(X_oos)
-        
-        sf = pd.DataFrame(columns = ["Training Set", "Fold" , "Criterion" ,"Score"])
-        sf["Training Set"] = ["D2"] * 9
-        sf["Fold"] = [f] * 9
-        sf["Criterion"] = criterion_names
-        
-        clf.fit(X_trn, y_trn)
-        sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
-        
-        score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
+    for mix, mixname in [(D1 , "D1"), (D2, "D2")]:
+        X, y = get_X_y(mix, df, tr = 0, seed = 1097)
+        f = 0 # count object for fold number
+        for trn_index, tst_index in skf.split(X, y):
+            f += 1
+            # Stratified Split
+            X_trn, X_tst = X.iloc[trn_index], X.iloc[tst_index]
+            y_trn, y_tst = y.iloc[trn_index], y.iloc[tst_index]
+            X_oos = X_OOS.copy() # so we don't "retransform" X_oos each time we scale
+            # Scaling
+            X_trn = scaling.fit_transform(X_trn)
+            X_tst = scaling.transform(X_tst)
+            X_oos = scaling.transform(X_oos)
+            
+            sf = pd.DataFrame(columns = ["Training Set", "Fold" , "Criterion" ,"Score"])
+            sf["Training Set"] = [mixname] * 9
+            sf["Fold"] = [f] * 9
+            sf["Criterion"] = criteria_names
+            
+            clf.fit(X_trn, y_trn)
+            sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
+            
+            score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
-    
-    
-    
-    Title = "Comparison of Account Level Detection Models Trained On Different Datasets with 5 Fold Cross Validation\n"
-    Title += "(Using AdaBoost Classifier; OOS = Balanced Midterm 2018)"
+    # Plotting the Scores:
+    Title = "Comparison of Account Level Detection Models Trained On Different Datasets with 5 Fold Cross Validation\n(Using AdaBoost Classifier; OOS = Balanced Midterm 2018)"
     ax = sns.barplot(
         data = score_dataframe,
         x="Criterion",
@@ -255,44 +229,49 @@ def compare_italy_to_d1(save = False):
     return score_dataframe
 
 # Cross validation model comparison
-def cross_validation_scores(trnsample = D1, outofsample = D3, save = False):
-    scaling = StandardScaler()
-    
-    # Defining Classifiers
+def compare_models(trnsample = D1, outofsample = D3):
+    """
+    Comparing the different classifiers:
+        - Random Forest classifier
+        - Logistic Regression Classifier
+        - Linear Support Vector Machine (trained by stochastic gradient descent)
+        - AdaBoost Classifier (Weak Learner is the decision stump)
+        - MLP Neural Network
+    Trained on the D1 Data Mixture
+    Using 5-fold cross validation and checking on an Out of Sample data mixture D3
+    """
+    scaling = StandardScaler() # scaler
+    # Classifiers we will compare:
     rfc = RandomForestClassifier(random_state = 25)
     lr  = LogisticRegression(max_iter = 1000, random_state=25, penalty='l2')
-    sgd = SGDClassifier(max_iter=1000, tol=1e-8, random_state = 25)
+    svm = SGDClassifier(max_iter=1000, tol=1e-8, random_state = 25)
     ab  = AdaBoostClassifier(n_estimators = 50, random_state = 25)
     nn  = get_nn(len(features)) # i.e. nfeats
-    classifiers = [rfc, lr, sgd, ab, nn]
-    
-    # Names for pandas dataframe
+    classifiers = [rfc, lr, svm, ab, nn] # list of classifiers
+    # Labels for the pandas dataframe:
     classifier_names = ["RFC", "LR", "SVM", "AB", "NN"]
     criterion_names_ = ["Accuracy", "Precision", "Recall", "F1"]
     criterion_names  = ["Train accuracy"] + ["Test " + i for i in criterion_names_] + ["OOS " + i for i in criterion_names_]
-    
-    # Stratified K Fold
+    # Retrieving training data
     df = get_full_dataset()
     X, y = get_X_y(trnsample, df, tr = 0, seed = 1097)
     X_OOS, y_oos = get_X_y(outofsample, df, tr = 0, seed = 2077)
-    skf = StratifiedKFold(n_splits=5, shuffle = True, random_state = 1349*5*65*17)
-    
+    skf = StratifiedKFold(n_splits=5, shuffle = True, random_state = 1349*5*65*17) # Object to retrieve Stratified 5-Fold indices
+    # Initialising: empty dataframe to store scores
     score_dataframe = pd.DataFrame()
-    
+    f = 0 # count object for fold number
     # Repeating training & testing on the different splits...
-    f = 0
     for trn_index, tst_index in skf.split(X, y):
         f += 1
-        # Stratified Split
+        # Stratified 5-fold Split
         X_trn, X_tst = X.iloc[trn_index], X.iloc[tst_index]
         y_trn, y_tst = y.iloc[trn_index], y.iloc[tst_index]
-        X_oos = X_OOS.copy() # so we don't "retransform" X_oos each time
-        
+        X_oos = X_OOS.copy() # so we don't "retransform" X_oos each time we scale
+        # Scaling
         X_trn = scaling.fit_transform(X_trn)
         X_tst = scaling.transform(X_tst)
         X_oos = scaling.transform(X_oos)
         # Iterating over the different classifiers...
-        
         for clf, clf_name in zip(classifiers, classifier_names):
             print("Calculating ", f, ": ", clf_name)
             sf = pd.DataFrame(columns = ["Model", "Fold" , "Criterion" ,"Score"])
@@ -307,8 +286,8 @@ def cross_validation_scores(trnsample = D1, outofsample = D3, save = False):
             sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
             score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
-    Title = "Comparison of Account Level Detection Models with 5 Fold Cross Validation\n"
-    Title += "(trained on all datasets except Midterm 2018 (with 80:20 split), OOS = Balanced Midterm 2018)"
+    # Plotting the scores:
+    Title = "Comparison of Account Level Detection Models with 5 Fold Cross Validation\n(trained on all datasets except Midterm 2018 (with 80:20 split), OOS = Balanced Midterm 2018)"
     ax = sns.barplot(
         data = score_dataframe,
         x="Criterion",
@@ -325,7 +304,16 @@ def cross_validation_scores(trnsample = D1, outofsample = D3, save = False):
     
 
 # Resampling Comparison...
-def compare_resampling(save = False):
+def compare_resampling():
+    """
+    Comparing resampling techniques:
+        -SMOTENN
+        -SMOTETOMEK
+        -No Resampling
+    Trained on the entire training dataset (i.e. as much data as possible)
+    Using the AdaBoost Classifier model
+    """
+    # chosen model is the AdaBoost Classifier
     clf = AdaBoostClassifier(n_estimators = 50, random_state = int(25*123817 // 7))
     
     scaling = StandardScaler()
@@ -421,5 +409,5 @@ def applying_classifier_to_all_accounts():
     d_row = {"user.id" : 25073877, "user.name" : "realDonaldTrump", "user.screen_name" : "realDonaldTrump", "user.verified" : True, "predicted_class"  : "human"}
     df = df.append(d_row, ignore_index=True)
     
-    # saving to csv
+    # saving
     #pickle.dump(df, open(m4r_data + "us_and_georgia_accounts.p", "wb"))
