@@ -17,8 +17,8 @@ import seaborn as sns
 sns.set(font="Arial") # plot style
 from sklearn.decomposition import TruncatedSVD
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import RFE
-from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import RFE, chi2, f_classif
+from sklearn.preprocessing import StandardScaler, minmax_scale
 from emoji import UNICODE_EMOJI
 from nltk import TweetTokenizer
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
@@ -148,32 +148,46 @@ def get_features():
     return df
 
 # 3. FEATURE SELECTION TECHNIQUES ---------------------------------------------
-# 3.i. SVD "EXPLAINED VARIANCE RATIO"
-def svd_feature_ranking():
-    """
-    Performs Singular Value Decomposition to obtain the scores for how much each
-    feature explains variance in the data (intuitively, the features that contain
-    the most information about the dataset)
-    """
+# # 3.i. SVD "EXPLAINED VARIANCE RATIO"
+# def svd_feature_ranking():
+#     """
+#     Performs Singular Value Decomposition to obtain the scores for how much each
+#     feature explains variance in the data (intuitively, the features that contain
+#     the most information about the dataset)
+#     """
+#     df = get_features() # Get training dataset with additional inferred features
+#     # Scaling the dataset
+#     scaling = StandardScaler()
+#     X = scaling.fit_transform(df[datalabels])
+#     # Performing Singular Value Decomposition (with n components)
+#     n = 22
+#     svd = TruncatedSVD(n_components=n, random_state = 1349*565)
+#     svd.fit(X)
+#     # Retrieving the explained variance ratios
+#     sorted_importance_datalabels = [datalabels[i] for i in svd.components_[0].argsort()[::-1]]
+#     sorted_importance = np.sort(np.abs(svd.components_[0]))[::-1]
+#     # Plotting:    
+#     plt.bar(range(len(datalabels)), sorted_importance)
+#     plt.xticks(range(len(datalabels)), sorted_importance_datalabels, rotation = 90)
+#     plt.xlabel("Feature", fontweight = "bold")
+#     plt.ylabel("Explained Variance", fontweight = "bold") # or "Explained Variance"
+#     plt.title("Explained Variance from Singular Value Decomposition", fontweight = "bold")
+    
+def anova_features():
     df = get_features() # Get training dataset with additional inferred features
     # Scaling the dataset
     scaling = StandardScaler()
     X = scaling.fit_transform(df[datalabels])
-    # Performing Singular Value Decomposition (with n components)
-    n = 22
-    svd = TruncatedSVD(n_components=n, random_state = 1349*565)
-    svd.fit(X)
-    # Retrieving the explained variance ratios
-    sorted_importance_datalabels = [datalabels[i] for i in svd.explained_variance_ratio_.argsort()[::-1]]
-    sorted_importance = np.sort(np.abs(svd.explained_variance_ratio_))[::-1]
-    # Plotting:
-    plt.bar(range(len(sorted_importance)), sorted_importance)
-    plt.xticks(range(len(sorted_importance)), sorted_importance_datalabels, rotation = 90)
-    plt.xlabel("Feature", fontweight = "bold")
-    plt.ylabel("Explained Variance Ratio", fontweight = "bold") # or "Explained Variance"
-    plt.title("Explained Variance from Singular Value Decomposition", fontweight = "bold")
-    plt.show()
+    y = df["class"].replace({"human" : 0, "bot" : 1})
+    feature_names = df[datalabels].columns
+    # Performing ANOVA:
+    _, p = f_classif(X, y)
     
+    X = minmax_scale(df[datalabels], (0,1))
+    _, p = chi2(X, y)
+    plt.bar(range(len(p)), p)
+    
+
 # 3.ii. RFC FEATURE IMPORTANCES
 def rfc_feature_importances():
     """
@@ -195,12 +209,13 @@ def rfc_feature_importances():
     indices = np.argsort(importances)[::-1]
     # Plotting:
     n = len(datalabels)
-    plt.figure()
+    plt.figure(figsize=(7, 3.2))
     plt.title("Feature importances from Random Forest Classifier", fontweight = "bold")
     plt.bar(range(n), importances[indices[:n]], color="r", align="center")
-    plt.xticks(range(n), feature_names[indices[:n]], rotation = 90)
+    plt.xticks(range(n), feature_names[indices[:n]], rotation = 30, ha="right", va="center", rotation_mode = "anchor", fontsize = 7, fontweight = "bold")
     plt.xlabel("Feature", fontweight = "bold")
     plt.ylabel("Relative Feature Importance", fontweight = "bold")
+    #plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\rfc_feature_importances.pdf", bbox_inches = "tight")
     plt.show()
 
 # 3.iii. RECURSIVE FEATURE ELIMINATION WITH AN RFC

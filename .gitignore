@@ -1,4 +1,7 @@
   
+# Things to ignore ~ Fan Grayson
+contextual_LSTM_weights_balanced/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

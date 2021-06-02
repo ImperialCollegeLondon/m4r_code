@@ -212,7 +212,9 @@ def compare_D1_to_D2():
             score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
     # Plotting the Scores:
-    Title = "Comparison of Account Level Detection Models Trained On Different Datasets with 5 Fold Cross Validation\n(Using AdaBoost Classifier; OOS = Balanced Midterm 2018)"
+    Title = "Comparing Training Mixtures for Account Level Detection\n(on an Adaboost Model)"
+    
+    plt.figure(figsize=(6, 3.5))
     ax = sns.barplot(
         data = score_dataframe,
         x="Criterion",
@@ -223,7 +225,10 @@ def compare_D1_to_D2():
     ax.set_xlabel("Score Criterion", fontweight = "bold")
     ax.set_ylabel("Score", fontweight = "bold")
     ax.legend(title = "Training\nDataset", loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
-    plt.xticks(rotation=15)
+    plt.xticks(rotation=30, ha="right", va="center", rotation_mode = "anchor")
+    
+    #plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_cresci_to_d1.pdf", bbox_inches = "tight")
+    
     plt.show()
     
     return score_dataframe
@@ -251,7 +256,7 @@ def compare_models(trnsample = D1, outofsample = D3):
     # Labels for the pandas dataframe:
     classifier_names = ["RFC", "LR", "SVM", "AB", "NN"]
     criterion_names_ = ["Accuracy", "Precision", "Recall", "F1"]
-    criterion_names  = ["Train accuracy"] + ["Test " + i for i in criterion_names_] + ["OOS " + i for i in criterion_names_]
+    criterion_names  = ["Train Accuracy"] + ["Test " + i for i in criterion_names_] + ["OOS " + i for i in criterion_names_]
     # Retrieving training data
     df = get_full_dataset()
     X, y = get_X_y(trnsample, df, tr = 0, seed = 1097)
@@ -287,9 +292,10 @@ def compare_models(trnsample = D1, outofsample = D3):
             score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
     # Plotting the scores:
-    Title = "Comparison of Account Level Detection Models with 5 Fold Cross Validation\n(trained on all datasets except Midterm 2018 (with 80:20 split), OOS = Balanced Midterm 2018)"
+    Title = "Comparing Account Level Detection Models"
+    plt.figure(figsize=(6, 3.5))
     ax = sns.barplot(
-        data = score_dataframe,
+        data = score_dataframe[score_dataframe["Criterion"].isin(["Train Accuracy", "Test Accuracy", "OOS Accuracy", "OOS Precision", "OOS Recall", "OOS F1"])],
         x="Criterion",
         y="Score",
         hue = "Model"
@@ -298,8 +304,12 @@ def compare_models(trnsample = D1, outofsample = D3):
     ax.set_xlabel("Score Criterion", fontweight = "bold")
     ax.set_ylabel("Score", fontweight = "bold")
     ax.legend(title = "Model", loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
-    plt.xticks(rotation=15)
+    plt.xticks(rotation=30, ha="right", va="center", rotation_mode = "anchor")
+    
+    plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_models_5_fold_cv.pdf", bbox_inches = "tight")
+    
     plt.show()
+    
     return score_dataframe
     
 
@@ -349,8 +359,8 @@ def compare_resampling():
         score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
         
     
-    Title = "Comparison of Account Level Detection Resampling Techniques with AdaBoost\n"
-    Title += "(trained on all datasets)"
+    Title = "Comparing Resampling Methods for Account Level Detection\n(on an Adaboost Model)"
+    plt.figure(figsize=(6, 3.5))
     ax = sns.barplot(
         data = score_dataframe,
         x="Criterion",
@@ -361,7 +371,10 @@ def compare_resampling():
     ax.set_xlabel("Score Criterion", fontweight = "bold")
     ax.set_ylabel("Score", fontweight = "bold")
     ax.legend(title = "Resampling\nMethod", loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
-    plt.xticks(rotation=15)
+    plt.xticks(rotation=30, ha="right", va="center", rotation_mode = "anchor")
+    
+    #plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_resampling_w_adaboost.pdf", bbox_inches = "tight")
+    
     plt.show()
         
         
