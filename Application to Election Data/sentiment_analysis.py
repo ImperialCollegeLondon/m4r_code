@@ -38,7 +38,6 @@ def distribution_of_vader_sentiment():
     us = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
     ga = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
     trn = pickle.load(open(m4r_data + "balanced_tweet_training_data.p", "rb"))[["user.id", "full_text", "tokenised_text", 'vader', 'class']]
-    df = None
     
     #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
     # PLOT 1: UNADJUSTED VADER DISTRIBUTION
