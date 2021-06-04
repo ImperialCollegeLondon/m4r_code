@@ -1,10 +1,16 @@
 """
 Title: Sentiment Analysis
 
-Description: Performing Sentiment Analysis using VADER
+Description: Performing Sentiment Analysis On Tweets using VADER
+This includes:
+    1. Plotting the distributions of Vader Sentiments for each of the datasets with:
+        i. No adjustment
+        ii. Neutral Scores removed
+        iii. Concatenating 5 Tweets together (for the users that have at least 5 tweets in the dataset)
+    2. 
 """
 
-# 1. SETUP --------------------------------------------------------------------
+# 0. SETUP --------------------------------------------------------------------
 import pickle, sys, datetime
 import pandas as pd
 import numpy as np
@@ -12,37 +18,34 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
 import seaborn as sns
-from imblearn.combine import SMOTEENN
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import AdaBoostClassifier
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 sns.set(font="Arial") # Setting the plot style
 m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" # folder location where data is held
 # Importing Account Level Detection
 sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
-from account_level_detection import get_full_dataset, features
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\" # folder location to store files
 
-
+# 1. 
 def distribution_of_vader_sentiment():
     """
     Comparing the distributions of the Vader scores over the Training,
-    US, and Georgia datasets.
+    US, and Georgia datasets. We plot three different distributions:
+        i. unadjusted
+        ii. neutral tweets removed
+        iii. keeping only users with 5 or more tweets and applying VADER to a 5 tweets concatenated together
     """
-    df = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))
-    us = df[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
-    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
-    ga = df[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
-    df = pickle.load(open(m4r_data + "balanced_tweet_training_data.p", "rb"))
-    trn = df[["user.id", "full_text", "tokenised_text", 'vader', 'class']]
+    # Loading tweets
+    us = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
+    ga = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
+    trn = pickle.load(open(m4r_data + "balanced_tweet_training_data.p", "rb"))[["user.id", "full_text", "tokenised_text", 'vader', 'class']]
     df = None
     
     #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
-    # PLOT 1: UNADJUSTED
+    # PLOT 1: UNADJUSTED VADER DISTRIBUTION
         
     fig, axes = plt.subplots(1, 3, figsize=(8, 2.9), sharey = True)
     fig.suptitle('Distribution of VADER Scores', fontweight = "bold")
-    # TRAINING
+    # For the TRAINING dataset
     sns.histplot(ax = axes[0],
                  data = trn.sort_values("class", ascending = False),
                  x = "vader",
@@ -55,7 +58,7 @@ def distribution_of_vader_sentiment():
     axes[0].set_title("Training", fontweight = "bold");
     axes[0].set_xlabel("")
     
-    # US
+    # For the US dataset
     sns.histplot(ax = axes[1],
                  data = us.sort_values("predicted_class", ascending = False),
                  x = "vader",
@@ -68,7 +71,7 @@ def distribution_of_vader_sentiment():
     axes[1].set_title("US", fontweight = "bold");
     axes[1].set_xlabel("VADER Score", fontweight = "bold")
     axes[1].get_legend().remove()
-    # GEORGIA
+    # For the GEORGIA dataset
     sns.histplot(ax = axes[2],
                  data = ga.sort_values("predicted_class", ascending = False),
                  x = "vader",
@@ -100,7 +103,7 @@ def distribution_of_vader_sentiment():
         
     fig, axes = plt.subplots(1, 3, figsize=(8, 2.9), sharey = True)
     fig.suptitle('Distribution of VADER Scores: Neutral Scores Removed', fontweight = "bold")
-    # TRAINING
+    # For the TRAINING dataset
     sns.histplot(ax = axes[0],
                  data = trn[trn["vader"] != 0].sort_values("class", ascending = False),
                  x = "vader",
@@ -113,7 +116,7 @@ def distribution_of_vader_sentiment():
     axes[0].set_title("Training", fontweight = "bold");
     axes[0].set_xlabel("")
     
-    # US
+    # For the US dataset
     sns.histplot(ax = axes[1],
                  data = us[us["vader"] != 0].sort_values("predicted_class", ascending = False),
                  x = "vader",
@@ -126,7 +129,7 @@ def distribution_of_vader_sentiment():
     axes[1].set_title("US", fontweight = "bold");
     axes[1].set_xlabel("VADER Score", fontweight = "bold")
     axes[1].get_legend().remove()
-    # GEORGIA
+    # For the GEORGIA dataset
     sns.histplot(ax = axes[2],
                  data = ga[ga["vader"] != 0].sort_values("predicted_class", ascending = False),
                  x = "vader",
@@ -189,7 +192,7 @@ def distribution_of_vader_sentiment():
     
     fig, axes = plt.subplots(1, 3, figsize=(8, 2.9), sharey = True)
     fig.suptitle('Distribution of VADER Scores: 5 Tweet Corpus', fontweight = "bold")
-    # TRAINING
+    # For the TRAINING dataset
     sns.histplot(ax = axes[0],
                  data = trn2.sort_values("class", ascending = False),
                  x = "vader",
@@ -202,7 +205,7 @@ def distribution_of_vader_sentiment():
     axes[0].set_title("Training", fontweight = "bold");
     axes[0].set_xlabel("")
     
-    # US
+    # For the US dataset
     sns.histplot(ax = axes[1],
                  data = us2.sort_values("predicted_class", ascending = False),
                  x = "vader",
@@ -215,7 +218,7 @@ def distribution_of_vader_sentiment():
     axes[1].set_title("US", fontweight = "bold");
     axes[1].set_xlabel("VADER Score", fontweight = "bold")
     axes[1].get_legend().remove()
-    # GEORGIA
+    # For the GEORGIA dataset
     sns.histplot(ax = axes[2],
                  data = ga2.sort_values("predicted_class", ascending = False),
                  x = "vader",
@@ -289,45 +292,7 @@ def distribution_of_vader_sentiment():
     
     
     
-    
-def proportion_of_vader_polarity_over_time():
-    us = (pickle.load(open(m4r_data + "us_election_tweets.p", "rb")))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
-    ga = (pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb")))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
-    
-    def f(x):
-        if x > 0:
-            return 1
-        elif x == 0:
-            return 0
-        else:
-            return -1
-        
-    us_ = us[(us["created_at"] > datetime.datetime(2020, 10, 27, 5, 0)) & (us["created_at"] < datetime.datetime(2020,11,9,5,0))]
-        
-    us_bot = us_[us_["retweeted_status.id"].isna()] # Drops Retweets
-    us_bot = us_bot[us_bot["predicted_class"] == "bot"][["vader", "created_at"]].reset_index(drop = True)
-    us_bot["created_at"] = us_bot["created_at"].dt.floor("d")
-    us_bot["polarity"] = us_bot["vader"].apply(lambda x: f(x))
-    us_bot = us_bot.groupby(["created_at", "polarity"]).count()
-    us_bot = us_bot.groupby(level=0).apply(lambda x: 100 * x / float(x.sum()))
-    us_bot = us_bot.reset_index()
-    
-    
-    us_human = us_[us_["retweeted_status.id"].isna()] # Drops Retweets
-    us_human = us_human[us_human["predicted_class"] == "human"][["vader", "created_at"]].reset_index(drop = True)
-    us_human["created_at"] = us_human["created_at"].dt.floor("d")
-    us_human["polarity"] = us_human["vader"].apply(lambda x: f(x))
-    us_human = us_human.groupby(["created_at", "polarity"]).count()
-    us_human = us_human.groupby(level=0).apply(lambda x: 100 * x / float(x.sum()))
-    us_human = us_human.reset_index()
-    
-    pal = [sns.color_palette("tab10")[3], sns.color_palette("tab10")[7], sns.color_palette("tab10")[2]]
-    sns.lineplot(data = us_human, x = "created_at", y = "vader", hue = "polarity", palette=pal);
-    plt.ylim(19, 55)
-    plt.show()
-    sns.lineplot(data = us_bot, x = "created_at", y = "vader", hue = "polarity", palette=pal);
-    plt.ylim(19, 55)
-    plt.show()
+
     
     
     
@@ -368,7 +333,7 @@ def average_vader_sentiment_over_time():
     labels = ["Human", "Bot"]
     plt.legend(handles, labels, ncol = 2, loc='upper left', bbox_to_anchor=(-0.12, -0.13))
     
-    plt.savefig(figure_path + "avg_vader_over_time_us_4_days_either_side.pdf", bbox_inches = "tight")
+    #plt.savefig(figure_path + "avg_vader_over_time_us_4_days_either_side.pdf", bbox_inches = "tight")
     
     plt.show()
     
@@ -400,8 +365,47 @@ def average_vader_sentiment_over_time():
     labels = ["Human", "Bot"]
     plt.legend(handles, labels, ncol = 2, loc='upper left', bbox_to_anchor=(-0.12, -0.13))
     
-    plt.savefig(figure_path + "avg_vader_over_time_ga_4_days_either_side.pdf", bbox_inches = "tight")
+    #plt.savefig(figure_path + "avg_vader_over_time_ga_4_days_either_side.pdf", bbox_inches = "tight")
     
     plt.show()
     
     
+    
+
+def proportion_of_vader_polarity_over_time():
+    us = (pickle.load(open(m4r_data + "us_election_tweets.p", "rb")))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
+    
+    def f(x):
+        if x > 0:
+            return 1
+        elif x == 0:
+            return 0
+        else:
+            return -1
+        
+    us_ = us[(us["created_at"] > datetime.datetime(2020, 10, 27, 5, 0)) & (us["created_at"] < datetime.datetime(2020,11,9,5,0))]
+        
+    us_bot = us_[us_["retweeted_status.id"].isna()] # Drops Retweets
+    us_bot = us_bot[us_bot["predicted_class"] == "bot"][["vader", "created_at"]].reset_index(drop = True)
+    us_bot["created_at"] = us_bot["created_at"].dt.floor("d")
+    us_bot["polarity"] = us_bot["vader"].apply(lambda x: f(x))
+    us_bot = us_bot.groupby(["created_at", "polarity"]).count()
+    us_bot = us_bot.groupby(level=0).apply(lambda x: 100 * x / float(x.sum()))
+    us_bot = us_bot.reset_index()
+    
+    
+    us_human = us_[us_["retweeted_status.id"].isna()] # Drops Retweets
+    us_human = us_human[us_human["predicted_class"] == "human"][["vader", "created_at"]].reset_index(drop = True)
+    us_human["created_at"] = us_human["created_at"].dt.floor("d")
+    us_human["polarity"] = us_human["vader"].apply(lambda x: f(x))
+    us_human = us_human.groupby(["created_at", "polarity"]).count()
+    us_human = us_human.groupby(level=0).apply(lambda x: 100 * x / float(x.sum()))
+    us_human = us_human.reset_index()
+    
+    pal = [sns.color_palette("tab10")[3], sns.color_palette("tab10")[7], sns.color_palette("tab10")[2]]
+    sns.lineplot(data = us_human, x = "created_at", y = "vader", hue = "polarity", palette=pal);
+    plt.ylim(19, 55)
+    plt.show()
+    sns.lineplot(data = us_bot, x = "created_at", y = "vader", hue = "polarity", palette=pal);
+    plt.ylim(19, 55)
+    plt.show()

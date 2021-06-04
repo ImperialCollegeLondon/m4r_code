@@ -28,7 +28,7 @@ from account_level_detection import get_full_dataset, features
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\" # folder location to store files
 
 
-# 1.i. 
+# i. 
 def comparing_to_training_set():
     """
     Comparing some features of the dataset in order to check that the training dataset
@@ -69,7 +69,7 @@ def comparing_to_training_set():
     #plt.savefig(figure_path + "compare_datasets_description_length.pdf", bbox_inches = "tight")
     plt.show()
 
-
+# ii.
 def proportions_of_bots_and_humans():
     """
     Comparing the proportions of bots to humans for the US and Georgia datasets for:
@@ -132,8 +132,7 @@ def proportions_of_bots_and_humans():
     #plt.savefig(figure_path + "proportions_pie_chart_us.pdf", bbox_inches = "tight")
     plt.show()
     
-    
-    
+# iii.
 def exploring_user_distribution():
     """
     Printing out statistics for each of the US and Georgia datasets:
