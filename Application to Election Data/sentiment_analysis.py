@@ -91,7 +91,7 @@ def distribution_of_vader_sentiment():
     axes[0].get_legend().remove()
     plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
     
-    plt.savefig(figure_path + "compare_vader_polarity_scores.pdf", bbox_inches = "tight")
+    #plt.savefig(figure_path + "compare_vader_polarity_scores.pdf", bbox_inches = "tight")
     
     plt.show()
     
@@ -149,7 +149,7 @@ def distribution_of_vader_sentiment():
     axes[0].get_legend().remove()
     plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
     
-    plt.savefig(figure_path + "compare_vader_polarity_scores_neutral_removed.pdf", bbox_inches = "tight")
+    #plt.savefig(figure_path + "compare_vader_polarity_scores_neutral_removed.pdf", bbox_inches = "tight")
     
     plt.show()
     
@@ -238,7 +238,7 @@ def distribution_of_vader_sentiment():
     axes[0].get_legend().remove()
     plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
     
-    plt.savefig(figure_path + "compare_vader_polarity_scores_5_tweets_concat.pdf", bbox_inches = "tight")
+    #plt.savefig(figure_path + "compare_vader_polarity_scores_5_tweets_concat.pdf", bbox_inches = "tight")
     
     plt.show()
     
