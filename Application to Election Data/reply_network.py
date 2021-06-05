@@ -9,7 +9,7 @@ Description:
 """
 
 # 1. SETUP --------------------------------------------------------------------
-import pickle, sys
+import pickle, sys, datetime
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -180,13 +180,141 @@ def centrality_scores():
 
 
 
+# EXPERIMENTAL:
+def compare_bot_to_human_vader_over_time_georgia():
+    """
+    Producing graphs similar to...
+    i.e. Bot to Bot; Bot to Human; Human to Bot; Human to Human
+    reply sentiment over time...
+    for US Election Retweets
+    """
+    # Load dataset (change for Georgia or US dataset)
+    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
+    # Loading all known users (this is a dataset of the unique users from combining the US and Georgia datasets, and then retrieving the account data of as many of the users that have been replied to in the datasets as possible)
+    users = pickle.load(open(m4r_data + "us_and_georgia_accounts.p", "rb"))
+    # Dataframe of user ids and class prediction for users that have been replied to; this will be merged with the Georgia dataset.
+    users_prediction = (pd.DataFrame({"in_reply_to_user_id" : users["user.id"], "reply_predicted_class" : users["predicted_class"]})).groupby("in_reply_to_user_id").first()
+    
+    # Producing the simple reply network:
+    # Keeping only tweets that are replies from the Georgia dataset
+    reply_net = df[["user.id", "in_reply_to_user_id", "vader", "created_at"]].dropna()
+    # Merging datasets to retrieve class labels and user names for repliers and recievers of replies
+    reply_net = reply_net.merge(users[["user.id", "predicted_class"]], how = "left", on = "user.id")
+    reply_net = reply_net.merge(users_prediction, how = "left", on = "in_reply_to_user_id")
+    # Dropping unknown users (i.e. unknown if bot or human due to missing account data)
+    reply_net = reply_net.dropna()
+    # Renaming the columns: i.e. the user replying is the source and the user receiving the reply is the target
+    reply_net.columns = ["Source", "Target", "vader", "created_at", "Source Class", "Target Class"]
+    
+    interaction_type = [("human", "human"), ("human", "bot"), ("bot", "human"), ("bot", "bot")]
 
+    
+    fig, axes = plt.subplots(1, 4, figsize=(8, 2.9), sharey = True)
+    fig.suptitle('Avg. Reply Sentiment Over Time in the Georgia Reply Network', fontweight = "bold")
+    axes[0].set_ylabel("Avg. VADER Score Over 6 Hours", fontweight = "bold")
+    for i, (a, b) in enumerate(interaction_type):
+        plot_data = reply_net[(reply_net["Source Class"] == a) & (reply_net["Target Class"] == b)]
+        plot_data = plot_data[(plot_data["created_at"] > datetime.datetime(2021, 1, 1, 0, 0)) & (plot_data["created_at"] < datetime.datetime(2021,1,10,0,0))]
+        
+        #print("Number of replies for", a, "to", b, "interaction in truncated time period:", len(plot_data))
+        
+        plot_data["created_at"] = plot_data["created_at"].dt.round("6H")
+        
+        if i < 2:
+            col = sns.color_palette("tab10")[0]
+        else:
+            col = sns.color_palette("tab10")[1]
+        
+        axes[i].axvspan(datetime.datetime(2021, 1, 5, 0, 0), datetime.datetime(2021,1,6,0,0), color = "red", alpha = 0.09)
+        sns.lineplot(ax = axes[i], data = plot_data, x = "created_at", y = "vader", color = col)
+        axes[i].set_title(str(a).upper() + " TO " + str(b).upper(), fontweight = "bold")
+        axes[i].set_xticks(pd.date_range(datetime.datetime(2021,1,1), periods=9).tolist())
+        #axes[i].set_xticklabels(["hello", "hello again"])
+        axes[i].set_xticklabels( [ pd.date_range(datetime.datetime(2021,1,1), periods=9).to_series().dt.strftime('%b %d').tolist()[i] if i % 2 == 0 else "" for i in range(9)  ] ,
+                                rotation=40 , fontsize = 9, fontweight = "bold",
+                                ha="center", va="center", rotation_mode = "anchor")
+        axes[i].tick_params(axis='x', which='major', pad=7)
+        axes[i].set_xlabel("")
+        
+        plt.setp(axes[i].collections[0], alpha=0.1)
+        
+    axes[0].tick_params(axis='y', which='major', pad=0.1)
+    plt.subplots_adjust( wspace = 0.06, top = 0.82)
+    
+    fig.text(0.51, -0.04, 'Date', ha='center', fontweight = "bold")
+    
+    plt.ylim(-0.3, 0.4)
+    plt.savefig(figure_path + "ga_reply_network_reply_sentiment.pdf", bbox_inches = "tight")
+    plt.show()
+    
+    
+def compare_bot_to_human_vader_over_time_us():
+    """
+    Producing graphs similar to...
+    i.e. Bot to Bot; Bot to Human; Human to Bot; Human to Human
+    reply sentiment over time...
+    for US Election Replies
+    """
+    # Load dataset (change for Georgia or US dataset)
+    df = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))
+    # Loading all known users (this is a dataset of the unique users from combining the US and Georgia datasets, and then retrieving the account data of as many of the users that have been replied to in the datasets as possible)
+    users = pickle.load(open(m4r_data + "us_and_georgia_accounts.p", "rb"))
+    # Dataframe of user ids and class prediction for users that have been replied to; this will be merged with the Georgia dataset.
+    users_prediction = (pd.DataFrame({"in_reply_to_user_id" : users["user.id"], "reply_predicted_class" : users["predicted_class"]})).groupby("in_reply_to_user_id").first()
+    
+    # Producing the simple reply network:
+    # Keeping only tweets that are replies from the Georgia dataset
+    reply_net = df[["user.id", "in_reply_to_user_id", "vader", "created_at"]].dropna()
+    # Merging datasets to retrieve class labels and user names for repliers and recievers of replies
+    reply_net = reply_net.merge(users[["user.id", "predicted_class"]], how = "left", on = "user.id")
+    reply_net = reply_net.merge(users_prediction, how = "left", on = "in_reply_to_user_id")
+    # Dropping unknown users (i.e. unknown if bot or human due to missing account data)
+    reply_net = reply_net.dropna()
+    # Renaming the columns: i.e. the user replying is the source and the user receiving the reply is the target
+    reply_net.columns = ["Source", "Target", "vader", "created_at", "Source Class", "Target Class"]
+    
+    interaction_type = [("human", "human"), ("human", "bot"), ("bot", "human"), ("bot", "bot")]
 
-
-
-
-
-
+    
+    fig, axes = plt.subplots(1, 4, figsize=(8, 2.9), sharey = True)
+    fig.suptitle('Avg. Reply Sentiment Over Time in the US Reply Network', fontweight = "bold")
+    axes[0].set_ylabel("Avg. VADER Score Over 6 Hours", fontweight = "bold")
+    for i, (a, b) in enumerate(interaction_type):
+        plot_data = reply_net[(reply_net["Source Class"] == a) & (reply_net["Target Class"] == b)]
+        plot_data = plot_data[(plot_data["created_at"] > datetime.datetime(2020, 10, 30, 0, 0)) & (plot_data["created_at"] < datetime.datetime(2020,11,8,0,0))]
+        
+        print("Number of replies for", a, "to", b, "interaction in truncated time period:", len(plot_data))
+        
+        plot_data["created_at"] = plot_data["created_at"].dt.round("6H")
+        
+        if i < 2:
+            col = sns.color_palette("tab10")[0]
+        else:
+            col = sns.color_palette("tab10")[1]
+        
+        axes[i].axvspan(datetime.datetime(2020, 11, 3, 0, 0), datetime.datetime(2020,11,4,0,0), color = "red", alpha = 0.09)
+        sns.lineplot(ax = axes[i], data = plot_data, x = "created_at", y = "vader", color = col)
+        axes[i].set_title(str(a).upper() + " TO " + str(b).upper(), fontweight = "bold")
+        axes[i].set_xticks(pd.date_range(datetime.datetime(2020,10,31), periods=9).tolist())
+        #axes[i].set_xticklabels(["hello", "hello again"])
+        axes[i].set_xticklabels( [ pd.date_range(datetime.datetime(2020, 10, 31), periods=9).to_series().dt.strftime('%b %d').tolist()[i] if i % 2 == 0 else "" for i in range(9)  ] ,
+                                rotation=40 , fontsize = 9, fontweight = "bold",
+                                ha="center", va="center", rotation_mode = "anchor")
+        axes[i].tick_params(axis='x', which='major', pad=7)
+        axes[i].set_xlabel("")
+        
+        plt.setp(axes[i].collections[0], alpha=0.1)
+        
+    axes[0].tick_params(axis='y', which='major', pad=0.1)
+    plt.subplots_adjust( wspace = 0.06, top = 0.82)
+    
+    fig.text(0.51, -0.04, 'Date', ha='center', fontweight = "bold")
+    
+    plt.ylim(-0.21, 0.63)
+    
+    plt.savefig(figure_path + "us_reply_network_reply_sentiment.pdf", bbox_inches = "tight")
+    
+    plt.show()
 
 
 

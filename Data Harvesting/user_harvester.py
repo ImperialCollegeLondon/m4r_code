@@ -34,6 +34,7 @@ file  = "user_collected_tweets.p" # change
 # *- TWITTER API KEYS -*
 # Importing API keys (these won't appear on GitHub - see Twitter API docs)
 try:
+    sys.path.insert(1, m4r_data)
     import config
     consumer_key = config.consumer_key
     consumer_secret = config.consumer_secret
@@ -123,16 +124,18 @@ elif n == 0:
     
     # *- BEGINNING RETRIEVAL -*
     for i in range(num_batches):
-        sys.stdout.write("\rRetrieving batch " + str(i) + " out of " + str(num_batches))
-        users = api.lookup_users(user_ids = user_ids[i*100 : (i+1)*100])
-        json_data = [u._json for u in users]
-        dfj = pd.json_normalize(json_data)
-        df_entire = df_entire.append( dfj[user_features] , ignore_index = True)
-        #full_users.drop(labels = droplab, axis = 1, inplace = True)
-    
+        try:
+            sys.stdout.write("\rRetrieving batch " + str(i) + " out of " + str(num_batches))
+            users = api.lookup_users(user_ids = user_ids[i*100 : (i+1)*100])
+            json_data = [u._json for u in users]
+            dfj = pd.json_normalize(json_data)
+            df_entire = df_entire.append( dfj[user_features] , ignore_index = True)
+            #full_users.drop(labels = droplab, axis = 1, inplace = True)
+        except:
+            pass
     print("\n",len(df_entire), "found out of", len(set(user_ids)))
 
-    # pickle.dump(df_entire, open(folder + file, "wb"))
+    pickle.dump(df_entire, open(m4r_data + file, "wb"))
     
     
 
