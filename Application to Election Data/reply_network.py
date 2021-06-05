@@ -2,12 +2,14 @@
 Title: Network Analysis of Replies for the Georgia Election Dataset
 
 Description:
-    1. Building a reply network that can be imported into Gephi
-
+    1. Building a simple reply network showing interactions across the classes in the Georgia reply network
+    2. Building a FULL reply network for the Georgia election dataset that we can calculate centrality scores for
+    3. Building a TRUNCATED Georgia reply network from (2.) that can be imported into Gephi to apply Louvain community detection and to visualise
+    
 """
 
 # 1. SETUP --------------------------------------------------------------------
-import pickle, sys, datetime
+import pickle, sys
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -16,7 +18,6 @@ import matplotlib.pyplot as plt
 sns.set(font="Arial") # Setting the plot style
 sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
 # Need to install the python-louvain package from taynaud
-import community as community_louvain
 import networkx as nx
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\"
 
@@ -53,7 +54,11 @@ def building_simple_reply_network():
 
 def more_complicated_reply_network():
     """
-    Building the more complicated Georgia reply network
+    Building the more complicated Georgia reply network,
+    and its truncated counterpart.
+    The truncated reply network is built by retrieving the users that recieve more than 9
+    replies, and then retrieving all users that interact with the user
+    Note that we ignore users replying to themselves.
     """
     # Loading the Georgia tweets
     df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
@@ -92,211 +97,95 @@ def more_complicated_reply_network():
     # And now the dataframe describing the nodes in the truncated network:
     # i.e. adding a class label (bot or human) (if class label is unknown, fill with 'unknown')
     nodelabels_truncated = ((pd.DataFrame({"user.id" : list(set(edges_truncated.Source).union(set(edges_truncated.Target))) })).merge(users[["user.id", "predicted_class"]], how = "left", on = "user.id")).fillna("unknown")
-    nodelabels_truncated.columns = ["Node", "Class"]
+    nodelabels_truncated.columns = ["Id", "Class"]
     # Saving to CSV:
     # nodelabels_truncated.to_csv(m4r_data + "ga_reply_network_truncated_nodelabels.csv", index = False, header = True)
     
-    
-    
-    
-    
-    
-    
-    
 
-def centrality():
-    df = pd.read_csv(m4r_data + "georgia_reply_network_full.csv")
-    G = nx.DiGraph()
-    G = nx.from_pandas_edgelist(df, "Source", "Target", ["Weight"], create_using=nx.DiGraph())
-    p_central = nx.algorithms.link_analysis.pagerank_alg.pagerank(G)
-    in_central = nx.algorithms.centrality.in_degree_centrality(G)
-    out_central = nx.algorithms.centrality.out_degree_centrality(G)
+def centrality_scores():
+    """
+    Calculating and plotting centrality scores for the FULL Georgia Reply Network
+    """
+    # Retrieving the FULL Georgia Reply Network: (created in more_complicated_reply_network())
+    df = pd.read_csv(m4r_data + "ga_reply_network_full.csv")
     
+    # Converting this to a networkx graph object:
+    G = nx.from_pandas_edgelist(df, "Source", "Target", ["Weight"], create_using=nx.DiGraph())
+    
+    # Calculating centrality scores:    
+    in_central = nx.algorithms.centrality.in_degree_centrality(G) # In-Degree
+    out_central = nx.algorithms.centrality.out_degree_centrality(G) # Out-Degree
+    p_central = nx.algorithms.link_analysis.pagerank_alg.pagerank(G) # PageRank with alpha = 0.85
+    
+    # Inserting the scores into a single dataframe:s
     d1 = pd.DataFrame().from_dict(p_central, orient = "index", columns = ["PageRank"]).reset_index()
     d2 = pd.DataFrame().from_dict(in_central, orient = "index", columns = ["In-Degree"]).reset_index()
     d3 = pd.DataFrame().from_dict(out_central, orient = "index", columns = ["Out-Degree"]).reset_index()
     centrality_df = ((d1.merge(d2, on = "index")).merge(d3, on = "index")).rename({"index" : "user.id"}, axis = 1)
     
+    # Now retrieving the Louvain community for each account (if the account is in community 8 or 42)
+    gephi = pd.read_csv(m4r_data + "Georgia Reply Network Louvain Community Detection.csv")[["Id", "modularity_class"]].rename({"Id" : "user.id", "modularity_class" : "Community"}, axis = 1)
+    gephi = gephi[gephi["Community"].isin([8, 42])] # Only care about Community labels for nodes in Communities 8 or 42 (the largest communities)
+
+    # Now retrieving the class (bot or human label)
+    users = pickle.load(open(m4r_data + "us_and_georgia_accounts.p", "rb"))[["user.id", "user.screen_name", "predicted_class"]]
     
-    gephi = pd.read_csv(m4r_data + "Georgia Reply Network Louvain Community Detection.csv")
-    gephi.columns = ["user.id", "label", "timeset", "Community"]
-    gephi = gephi[gephi["Community"].isin([8, 42])]
-    
-    
-    users = pickle.load(open(m4r_data + "us_and_georgia_accounts.p", "rb"))
-    
-    
-    centrality_df = centrality_df.merge(users[["user.id", "predicted_class"]], on = "user.id", how = "left")
+    # Adding account class and community labels to the centrality score dataframe
+    centrality_df = centrality_df.merge(users[["user.id", "predicted_class"]], on = "user.id", how = "left").rename({"predicted_class" : "Class"}, axis = 1)
     centrality_df = centrality_df.fillna("Unknown")
     centrality_df = centrality_df.merge(gephi[["user.id", "Community"]], how = "left", on = "user.id")
-    centrality_df = centrality_df.fillna(0)
-    centrality_df.rename({"predicted_class" : "Predicted Class"}, axis = 1, inplace = True)
+    centrality_df = (centrality_df.fillna("Other"))
     centrality_df = centrality_df.merge(users[["user.id", "user.screen_name"]], on = "user.id", how = "left")
+    centrality_df["Class"] = centrality_df["Class"].replace({"human" : "Human", "bot" : "Bot"})
+    centrality_df["Community"] = centrality_df["Community"].replace({8 : "Group 8", 42 : "Group 42"})
+    centrality_df = centrality_df.sort_values(["Class", "Community"], ascending = False)
     
-    fig, axes = plt.subplots(1, 2, figsize=(9.4, 4))
+    # Plotting the centrality scores against each other...
+    pal = [sns.color_palette("tab10")[7], sns.color_palette("tab10")[0], sns.color_palette("tab10")[1]]
+    fig, axes = plt.subplots(1, 2, figsize=(8, 3.1), sharey = True)
     fig.suptitle('Comparing Centrality Measures for the Georgia Reply Network', fontweight = "bold")
+    # In degree vs Out degree
+    sns.scatterplot(ax = axes[0], data = centrality_df, y = "In-Degree", x = "Out-Degree", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
+    # In degree vs PageRank
+    sns.scatterplot(ax = axes[1], data = centrality_df, y = "In-Degree", x = "PageRank", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
     
-    sns.scatterplot(ax = axes[0], data = centrality_df, x = "In-Degree", y = "Out-Degree", hue = "Predicted Class", style = "Community", s = 120)
-    
-    sns.scatterplot(ax = axes[1], data = centrality_df, x = "In-Degree", y = "PageRank", hue = "Predicted Class", style = "Community", s = 120)
-    
+    # Legend
     handles, labels = axes[0].get_legend_handles_labels()
-    
+    new_handles = [handles[i] for i in [0,2,3,1,4,6,7,5]]
+    new_labels = [labels[i] for i in [0,2,3,1,4,6,7,5]]
     axes[0].legend([],[], frameon=False)
     axes[1].legend([],[], frameon=False)
-    fig.legend(handles, labels, bbox_to_anchor=[1.05, 0.83])
+    fig.legend(new_handles, new_labels, loc = "center left",  bbox_to_anchor=[0.67, 0.5])
     
-    axes[0].set_xlabel("In-Degree Centrality", fontweight = "bold")
-    axes[1].set_xlabel("In-Degree Centrality", fontweight = "bold")
-    axes[0].set_ylabel("Out-Degree Centrality", fontweight = "bold")
-    axes[1].set_ylabel("PageRank Centrality", fontweight = "bold")
+    # Names of axes
+    axes[0].set_ylabel("In-Degree Centrality", fontweight = "bold")
+    #axes[1].set_ylabel("In-Degree Centrality", fontweight = "bold")
+    axes[0].set_xlabel("Out-Degree Centrality", fontweight = "bold")
+    axes[1].set_xlabel("PageRank Centrality", fontweight = "bold")
     
-    plt.subplots_adjust(wspace = 0.25, hspace = 0.1)
+    # Adjusting plot size to accommodate legend: right determines how much space is left for the legend - e.g. right = 0.8 leaves 80% of space for legend
+    plt.subplots_adjust(right = 0.69, wspace = 0.04, hspace = 0.1)
     
-    plt.savefig(figure_path + "ga_centrality_measures.pdf", bbox_inches = "tight")
+    #plt.savefig(figure_path + "ga_centrality_measures.pdf", bbox_inches = "tight")
     
     plt.show()
     
-    #G = nx.DiGraph()
-    #G = nx.from_pandas_edgelist(df, "Source", "Target", ["Weight"], create_using=nx.DiGraph())
-    # Too Slow b_central = nx.betweenness_centrality(G)
 
-def louvain():
-    df = pd.read_csv(m4r_data + "georgia_reply_network_full.csv")
-    A = list(df[["Source", "Target"]].to_records(index=False))
-    #G = nx.DiGraph()
-    G = nx.Graph()
-    G.add_edges_from(A)
-    for index, row in df.iterrows():
-        G.edges[row["Source"], row["Target"]]["weight"] = row["Weight"]
-    
-    partition = community_louvain.best_partition(G, partition = None, weight = 'weight', resolution = 1.2, random_state = None)
-    pdf = pd.DataFrame().from_dict(partition, orient='index', columns = ["Community"])
-    pdf["Count"] = 1
-    a = pdf.groupby("Community").count().sort_values("Count")
-    a["Count"] / sum(a["Count"]) * 100
-    
-    
-    # Compare to Gephi's partitioning using Louvain:
-    gephi = pd.read_csv(m4r_data + "Georgia Reply Network Louvain Community Detection.csv")
-    
-    gephi["Count"] = 1
-    c = gephi[[ "modularity_class" , "Count"]].groupby("modularity_class").count().reset_index()
-    
-    
-    plt.figure(figsize=(8, 4), dpi=80)
-    plt.scatter(c["modularity_class"], c["Count"]/sum(c["Count"]) );
-    plt.title("Sizes of Communities Found in the Georgia Reply Network", fontweight = "bold")
-    plt.xlabel("Modularity Class Number", fontweight = "bold")
-    plt.ylabel("Proportion of Nodes", fontweight = "bold")
-    plt.text(8 + 2, 945 / 3865, "8")
-    plt.text(42 + 2, 662 / 3865, "42")
-    plt.savefig(figure_path + "louvain_distribution_of_community_sizes.pdf", bbox_inches = "tight")
-    plt.show()
-    
-    # Takes far too long:
-    # partition2 = greedy_modularity_communities(G)
-    
-    
-    # G = nx.Graph().from_pandas_dataframe(df, "Source", "Target", ["Weight"])
-    
-    
-    
-    # G.add_edges_from(# INSERT LIST OF TUPLES - PAIRS OF NODES)
-    # G.edges[1, 2]['weight'] = 4
-    
-    
-    
-    democrats = gephi[gephi["modularity_class"] == 8]["Id"]
-    republicans = gephi[gephi["modularity_class"] == 42]["Id"]
-    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
-    dem_tweets = df[df["user.id"].isin(democrats)]
-    rep_tweets = df[df["user.id"].isin(republicans)]
-    
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey = True)
-    fig.suptitle('Comparing Distributions of VADER Polarity Scores for the Two Largest Louvain Groups', fontweight = "bold")
-    
-    sns.histplot(
-        ax = axes[0],
-        data = dem_tweets.sort_values("predicted_class"),
-        x = "vader",
-        hue = "predicted_class",
-        stat="density",
-        common_norm = False,
-        bins = np.linspace(-1,1,20),
-        element = "step"
-        )
-    
-    sns.histplot(
-        ax = axes[1],
-        data = rep_tweets.sort_values("predicted_class"),
-        x = "vader",
-        hue = "predicted_class",
-        stat="density",
-        common_norm = False,
-        bins = np.linspace(-1,1,20),
-        element = "step"
-        )
-    plt.show()
-    
-    yi = dem_tweets[(dem_tweets["created_at"] > datetime.datetime(2021, 1, 1, 5, 0)) & (dem_tweets["created_at"] < datetime.datetime(2021, 1, 10,5,0))].index
-    plotdata1 = pd.DataFrame()
-    plotdata1["vader"] = dem_tweets.loc[yi, "vader"]
-    plotdata1["time"] = dem_tweets.loc[yi, "created_at"].dt.round("D")
-    plotdata1["predicted_class"] = dem_tweets.loc[yi, "predicted_class"]
-    sns.lineplot(data = plotdata1, x = "time", y = "vader", hue = "predicted_class")
-    plt.plot()
-    
-    zi = rep_tweets[(rep_tweets["created_at"] > datetime.datetime(2021, 1, 1, 5, 0)) & (rep_tweets["created_at"] < datetime.datetime(2021, 1, 10,5,0))].index
-    plotdata2 = pd.DataFrame()
-    plotdata2["vader"] = rep_tweets.loc[zi, "vader"]
-    plotdata2["time"] = rep_tweets.loc[zi, "created_at"].dt.round("D")
-    plotdata2["predicted_class"] = rep_tweets.loc[zi, "predicted_class"]
-    sns.lineplot(data = plotdata2, x = "time", y = "vader", hue = "predicted_class")
-    plt.plot()
-    plt.show()
-    
-    
-    plotdata1["Community"] = "Group 8"
-    plotdata2["Community"] = "Group 42"
-    sns.lineplot(data = pd.concat([plotdata1, plotdata2], ignore_index = True), x = "time", y = "vader", hue = "Community")
-    plt.show()
-    
-    
-    
-    
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
-    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
-    df = df[df["in_reply_to_status_id"].isna() == False] # keep only retweets
-    df = df[df["user.id"].isin(gephi["Id"])]  # keep only users that are in reduced reply network
-    users = pickle.load(open(m4r_data + "us_and_georgia_accounts.p", "rb"))
-    users = users[users["user.id"].isin(gephi["Id"])]
-    edges = df[["user.id", "in_reply_to_user_id", "predicted_class"]].dropna()
-    edges.columns = ["Source", "Target", "Source Class"]
-    edges["Target"] = edges["Target"].astype("int64")
-    edges = edges.merge(users.rename({"user.id" : "Target"}, axis = 1)[["Target", "predicted_class"]], on = "Target", how = "left")
-    edges.rename({"predicted_class" : "Target Class"}, axis = 1, inplace = True)
-    
-    edges = edges.merge(gephi.rename({"Id" : "Source", "modularity_class" : "Source Group"}, axis = 1)[["Source", "Source Group"]], on = "Source", how = "left")
-    edges = edges.merge(gephi.rename({"Id" : "Target", "modularity_class" : "Target Group"}, axis = 1)[["Target", "Target Group"]], on = "Target", how = "left")
 
-    edges_backup = edges.copy()
 
-    edges = edges.dropna()
-    
-    edges = edges[(edges["Target Group"].isin([8, 42])) & (edges["Source Group"].isin([8, 42]))]
-    
-    CC = edges.groupby(["Source Class", "Target Class", "Source Group", "Target Group"]).count()
 
-def more_complicated_reply_diagram_wth_louvain_groups():
-    """
-    i.e. the 4 way diagram:
-        Human Group 1   |     Human Group 2
-        -------------------------------------
-        Bot Group 1     |     Bot Group 2
-    """
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
