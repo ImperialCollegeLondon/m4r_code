@@ -2,26 +2,20 @@
 Building a hashtag cooccurence network
 """
 
+# 1. SETUP --------------------------------------------------------------------
 import pandas as pd
-import sys, pickle
-import operator
-import networkx as nx
-import matplotlib.pyplot as plt
+import pickle, sys
 import numpy as np
-from imblearn.combine import SMOTEENN
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import AdaBoostClassifier
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
-sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
-from account_level_detection import get_full_dataset, features
-
 
 # File Path:
     
 m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
 
+
 def get_hashtags(t):
+    """
+    Retrieves all hashtags from a tweet text input (t)
+    """
     indices = [i for i, x in enumerate(t) if x == "<hashtag>"]
     return sorted([t[i+1].lower() for i in indices])
 
@@ -45,6 +39,10 @@ def get_cooccurrence_matrix(df):
     return H
 
 def distribution_of_cooccurrences(H, TH = 5):
+    """
+    Printing out how many hashtag pairs have more than X number of co-occurrences
+    for X = TH, 5, 100, 1000, 2000
+    """
     distribution_of_cooccurrences = []
     for h in H:
         distribution_of_cooccurrences += list(H[h].values())
@@ -56,7 +54,11 @@ def distribution_of_cooccurrences(H, TH = 5):
     print(">2000:", sum(distribution_of_cooccurrences > 2000))
     print(">TH:  ", sum(distribution_of_cooccurrences > TH))
     
+
 def get_most_occurring(H, TH = 5):
+    """
+    Subset of hashtag co-occurrences with more than TH occurrences
+    """
     # Making a dataframe from the pandas dictionary... THESE WILL BE THE EDGES
     Hdf = pd.DataFrame(columns = ["Source", "Target", "Weight"])
     tot = len(H)
@@ -72,59 +74,94 @@ def get_most_occurring(H, TH = 5):
     return Hdf
     
     
-    
-def classify_accounts():
-    df_us = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))
-    us = df_us.groupby("user.id").first().reset_index()
-    df_ga = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
-    ga = df_ga.groupby("user.id").first().reset_index()    
-    
-    trainset = get_full_dataset()
-    us = get_full_dataset(us)
-    ga = get_full_dataset(ga)
-    
-    X_us = us[features]
-    X_ga = ga[features]
-    
-    X_trn = trainset[features]
-    y_trn = trainset["class"].replace({"bot" : 1, "human" : 0})
-                                      
-    SME = SMOTEENN(random_state = 2727841)
-    X_trn, y_trn = SME.fit_resample(X_trn, y_trn)
-    
-    scaling = StandardScaler()
-    X_trn = scaling.fit_transform(X_trn)
-    X_us  = scaling.transform(X_us)
-    X_ga  = scaling.transform(X_ga)
 
-    clf = AdaBoostClassifier(n_estimators = 50, random_state = 9926737)
-    clf.fit(X_trn, y_trn)    
+def build_4(df_ga):
+    """
+    SPLITTING GEORGIA dataset by BOTS-HUMANS ---AND--- POSITIVE-NEGATIVE
+    So we get 4 subsets: bot negative, bot positive, human negative, human positive
+    Finds hashtag co-occurrences, then keeps the top 25 co-occurrences for each
+    subset
+    """
     
-    p_us = np.round(clf.predict(X_us))
-    p_ga = np.round(clf.predict(X_ga))
+    df_ga = pickle.load(open(m4r_data + "georgia_election_dataset.p", "rb"))
     
-    us["predicted_class"] = p_us
-    ga["predicted_class"] = p_ga
+    # # # # # HUMAN GA TWEETS # # # # # 
+    # Positive ----------------------------------------------------------------
+    # Extracting tweets with positive (> 0.25) AND predicted human and more than 1 hashtag
+    ga_human_pos = df_ga[(df_ga["vader"] > 0.25) & ((df_ga["predicted_class"] == "human") & (df_ga["hashtag_count"] > 1))]
+    # Splitting the text into a list of words/tokens
+    ga_human_pos = ga_human_pos["tokenised_text"].str.split()
+    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
+    ga_human_pos = ga_human_pos.apply(lambda x : get_hashtags(x))
+    # Building cooccurrence matrix:
+    H = get_cooccurrence_matrix(ga_human_pos)
+    # Printing out distribution
+    distribution_of_cooccurrences(H, TH = 5)
+    # Get dataframe of most common hashtags
+    ga_human_pos_rank = get_most_occurring(H, TH = 5)
+    # TOP 25 COOCCURRENCES:
+    ga_human_pos_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_human_and_positive_top_25.csv", index = False)
+    # Negative ----------------------------------------------------------------
+    # Extracting tweets with negative (< - 0.25) AND predicted human and more than 1 hashtag
+    ga_human_neg = df_ga[(df_ga["vader"] < -0.25) & ((df_ga["predicted_class"] == "human") & (df_ga["hashtag_count"] > 1))]
+    # Splitting the text into a list of words/tokens
+    ga_human_neg = ga_human_neg["tokenised_text"].str.split()
+    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
+    ga_human_neg = ga_human_neg.apply(lambda x : get_hashtags(x))
+    # Building cooccurrence matrix:
+    H = get_cooccurrence_matrix(ga_human_neg)
+    # Printing out distribution
+    distribution_of_cooccurrences(H, TH = 5)
+    # Get dataframe of most common hashtags
+    ga_human_neg_rank = get_most_occurring(H, TH = 5)
+    # TOP 25 COOCCURRENCES:
+    ga_human_neg_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_human_and_negative_top_25.csv", index = False)
     
-    us["predicted_class"] = us["predicted_class"].replace({0 : "human", 1 : "bot"})
-    ga["predicted_class"] = ga["predicted_class"].replace({0 : "human", 1 : "bot"})
     
-    print("% Bots (US): ", sum(p_us)/len(p_us))
-    print("% Bots (GA): ", sum(p_ga)/len(p_ga))
     
-    # adding predicted class column to df
-    df_us = df_us.merge(us[["user.id", "predicted_class"]], how = "left", on = "user.id")
-    # adding predicted class column to df
-    df_ga = df_ga.merge(ga[["user.id", "predicted_class"]], how = "left", on = "user.id")
+    # # # # # BOT GA TWEETS # # # # # 
+    # Positive ----------------------------------------------------------------
+    # Extracting tweets with positive (> 0.25) AND predicted human and more than 1 hashtag
+    ga_bot_pos = df_ga[(df_ga["vader"] > 0.25) & ((df_ga["predicted_class"] == "bot") & (df_ga["hashtag_count"] > 1))]
+    # Splitting the text into a list of words/tokens
+    ga_bot_pos = ga_bot_pos["tokenised_text"].str.split()
+    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
+    ga_bot_pos = ga_bot_pos.apply(lambda x : get_hashtags(x))
+    # Building cooccurrence matrix:
+    H = get_cooccurrence_matrix(ga_bot_pos)
+    # Printing out distribution
+    distribution_of_cooccurrences(H, TH = 5)
+    # Get dataframe of most common hashtags
+    ga_bot_pos_rank = get_most_occurring(H, TH = 5)
+    # TOP 25 COOCCURRENCES:
+    ga_bot_pos_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_bot_and_positive_top_25.csv", index = False)
+    # Negative ----------------------------------------------------------------
+    # Extracting tweets with negative (< - 0.25) AND predicted bot and more than 1 hashtag
+    ga_bot_neg = df_ga[(df_ga["vader"] < -0.25) & ((df_ga["predicted_class"] == "bot") & (df_ga["hashtag_count"] > 1))]
+    # Splitting the text into a list of words/tokens
+    ga_bot_neg = ga_bot_neg["tokenised_text"].str.split()
+    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
+    ga_bot_neg = ga_bot_neg.apply(lambda x : get_hashtags(x))
+    # Building cooccurrence matrix:
+    H = get_cooccurrence_matrix(ga_bot_neg)
+    # Printing out distribution
+    distribution_of_cooccurrences(H, TH = 5)
+    # Get dataframe of most common hashtags
+    ga_bot_neg_rank = get_most_occurring(H, TH = 5)
+    # TOP 25 COOCCURRENCES:
+    ga_bot_neg_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_bot_and_negative_top_25.csv", index = False)
     
-    return df_us, df_ga
-
-  
+    
+    
+    
     
     
 def build_3(df_us):
     """
-    SPLITTING us INTO BOTS-HUMANS ---AND--- POSITIVE NEusTIVE
+    SPLITTING US dataset by BOTS-HUMANS ---AND--- POSITIVE-NEGATIVE
+    So we get 4 subsets: bot negative, bot positive, human negative, human positive
+    Finds hashtag co-occurrences, then keeps the top 25 co-occurrences for each
+    subset
     """
     
     # # # # # HUMAN us TWEETS # # # # # 
@@ -196,85 +233,12 @@ def build_3(df_us):
     
     
     
-    
+
     
     
     
 
-def build_4(df_ga):
-    """
-    SPLITTING GA INTO BOTS-HUMANS ---AND--- POSITIVE NEGATIVE
-    """
-    
-    # # # # # HUMAN GA TWEETS # # # # # 
-    # Positive ----------------------------------------------------------------
-    # Extracting tweets with positive (> 0.25) AND predicted human and more than 1 hashtag
-    ga_human_pos = df_ga[(df_ga["vader"] > 0.25) & ((df_ga["predicted_class"] == "human") & (df_ga["hashtag_count"] > 1))]
-    # Splitting the text into a list of words/tokens
-    ga_human_pos = ga_human_pos["tokenised_text"].str.split()
-    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
-    ga_human_pos = ga_human_pos.apply(lambda x : get_hashtags(x))
-    # Building cooccurrence matrix:
-    H = get_cooccurrence_matrix(ga_human_pos)
-    # Printing out distribution
-    distribution_of_cooccurrences(H, TH = 5)
-    # Get dataframe of most common hashtags
-    ga_human_pos_rank = get_most_occurring(H, TH = 5)
-    # TOP 25 COOCCURRENCES:
-    ga_human_pos_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_human_and_positive_top_25.csv", index = False)
-    # Negative ----------------------------------------------------------------
-    # Extracting tweets with negative (< - 0.25) AND predicted human and more than 1 hashtag
-    ga_human_neg = df_ga[(df_ga["vader"] < -0.25) & ((df_ga["predicted_class"] == "human") & (df_ga["hashtag_count"] > 1))]
-    # Splitting the text into a list of words/tokens
-    ga_human_neg = ga_human_neg["tokenised_text"].str.split()
-    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
-    ga_human_neg = ga_human_neg.apply(lambda x : get_hashtags(x))
-    # Building cooccurrence matrix:
-    H = get_cooccurrence_matrix(ga_human_neg)
-    # Printing out distribution
-    distribution_of_cooccurrences(H, TH = 5)
-    # Get dataframe of most common hashtags
-    ga_human_neg_rank = get_most_occurring(H, TH = 5)
-    # TOP 25 COOCCURRENCES:
-    ga_human_neg_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_human_and_negative_top_25.csv", index = False)
-    
-    
-    
-    # # # # # BOT GA TWEETS # # # # # 
-    # Positive ----------------------------------------------------------------
-    # Extracting tweets with positive (> 0.25) AND predicted human and more than 1 hashtag
-    ga_bot_pos = df_ga[(df_ga["vader"] > 0.25) & ((df_ga["predicted_class"] == "bot") & (df_ga["hashtag_count"] > 1))]
-    # Splitting the text into a list of words/tokens
-    ga_bot_pos = ga_bot_pos["tokenised_text"].str.split()
-    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
-    ga_bot_pos = ga_bot_pos.apply(lambda x : get_hashtags(x))
-    # Building cooccurrence matrix:
-    H = get_cooccurrence_matrix(ga_bot_pos)
-    # Printing out distribution
-    distribution_of_cooccurrences(H, TH = 5)
-    # Get dataframe of most common hashtags
-    ga_bot_pos_rank = get_most_occurring(H, TH = 5)
-    # TOP 25 COOCCURRENCES:
-    ga_bot_pos_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_bot_and_positive_top_25.csv", index = False)
-    # Negative ----------------------------------------------------------------
-    # Extracting tweets with negative (< - 0.25) AND predicted bot and more than 1 hashtag
-    ga_bot_neg = df_ga[(df_ga["vader"] < -0.25) & ((df_ga["predicted_class"] == "bot") & (df_ga["hashtag_count"] > 1))]
-    # Splitting the text into a list of words/tokens
-    ga_bot_neg = ga_bot_neg["tokenised_text"].str.split()
-    # Extracting hashtags (i.e. keeping only the token following "<hashtag>")
-    ga_bot_neg = ga_bot_neg.apply(lambda x : get_hashtags(x))
-    # Building cooccurrence matrix:
-    H = get_cooccurrence_matrix(ga_bot_neg)
-    # Printing out distribution
-    distribution_of_cooccurrences(H, TH = 5)
-    # Get dataframe of most common hashtags
-    ga_bot_neg_rank = get_most_occurring(H, TH = 5)
-    # TOP 25 COOCCURRENCES:
-    ga_bot_neg_rank.sort_values("Weight").tail(25).to_csv(m4r_data + "ga_hashtag_cooccurrence_network_bot_and_negative_top_25.csv", index = False)
-    
-    
-    
-    
+
     
   
     
