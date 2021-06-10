@@ -7,7 +7,7 @@ This includes:
         i. No adjustment
         ii. Neutral Scores removed
         iii. Concatenating 5 Tweets together (for the users that have at least 5 tweets in the dataset)
-    2. 
+    2. Plotting average VADER sentiment over time
 """
 
 # 0. SETUP --------------------------------------------------------------------
