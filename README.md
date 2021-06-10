@@ -16,4 +16,4 @@ This repository only contains the code. So training data, collected data, traine
 - - `data_exploration.py` Explores summary statistics of the Georgia and US datasets, plots distributions of datasets, compares to training dataset.
 - - `sentiment_analysis.py` Performs VADER sentiment analysis: distribution and plots over time.
 - - `reply_network.py` Builds simple and more complicated reply networks for the Georgia dataset.
-- - hashtag_cooccurrence_network.py` Builds a hashtag co-occurrence network that can be plotted in Gephi.
+- - `hashtag_cooccurrence_network.py` Builds a hashtag co-occurrence network that can be plotted in Gephi.
