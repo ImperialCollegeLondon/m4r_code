@@ -3,9 +3,10 @@ Title: Data Exploration
 
 Description: Exploring the Training, US Election, and Georgia Election datasets
 This includes:
-    i.   Comparing features of the datasets to check if the training dataset is representative of the collected datasets
-    ii.  Comparing proportions of humans and bots in the datasets
-    iii. Checking statistics of the datasets to check how representative of all Twitter users the Georgia and US tweets are
+    i.   Exploring summary statistics/info of the US Election and Georgia Election Datasets
+    ii.  Comparing features of the datasets to check if the training dataset is representative of the collected datasets
+    iii. Comparing proportions of humans and bots in the datasets
+    iv.  Checking statistics of the datasets to check how representative of all Twitter users the Georgia and US tweets are
 """
 
 # 1. SETUP --------------------------------------------------------------------
@@ -27,8 +28,60 @@ sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
 from account_level_detection import get_full_dataset, features
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\" # folder location to store files
 
+# i.
+def summary_stats():
+    """
+    Printing summary information for the US and Georgia Election datasets
+    Additionally compare summary statistics to the Midterm 2018 dataset
+    """
+    us = (pickle.load(open(m4r_data + "us_election_tweets.p", "rb")))
+    ga = (pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb")))
+    
+    print("US #users:     ", len(us[["user.id", "full_text"]].groupby("user.id").first()))
+    print("GA #users:     ", len(ga[["user.id", "full_text"]].groupby("user.id").first()))
+    print("-----------------------------------------")
+    print("US #tweets:    ", len(us))
+    print("GA #tweets:    ", len(ga))
+    print("-----------------------------------------")
+    print("US #originals: ", sum((us["in_reply_to_status_id"].isna()) & (us["retweeted_status.id"].isna())))
+    print("GA #originals: ", sum((ga["in_reply_to_status_id"].isna()) & (ga["retweeted_status.id"].isna())))
+    print("-----------------------------------------")
+    print("US #retweets:  ", len(us["retweeted_status.id"].dropna()))
+    print("GA #retweets:  ", len(ga["retweeted_status.id"].dropna()))
+    print("-----------------------------------------")
+    print("US #replies:   ", len(us["in_reply_to_status_id"].dropna()))
+    print("GA #replies:   ", len(ga["in_reply_to_status_id"].dropna()))
+    print("-----------------------------------------")
+    
+    account_features = ['user.id', 'user.created_at', 'user.name', 'user.screen_name',
+       'user.description', 'user.lang', 'user.verified', 'user.geo_enabled',
+       'user.default_profile', 'user.default_profile_image',
+       'user.followers_count', 'user.friends_count', 'user.listed_count',
+       'user.favourites_count', 'user.statuses_count', 'predicted_class']
+    
+    # Comparing US & GA To midterm 2018
+    us = us[account_features].groupby("user.id").first().reset_index()
+    ga = ga[account_features].groupby("user.id").first().reset_index()
+    midterms = pickle.load(open(m4r_data + "balanced_account_training_data.p", "rb"))
+    midterms = midterms[midterms["dataset"] == "Midterm 2018"].reset_index(drop = True)
+    
+    midterm_hums = midterms[midterms["class"] == "human"]
+    midterm_bots = midterms[midterms["class"] == "bot"]
+    
+    colnames = ['user.followers_count', 'user.friends_count', 'user.listed_count',
+       'user.favourites_count', 'user.statuses_count']
+    
+    us_hum = us[us["predicted_class"] == "human"][colnames]
+    us_bot = us[us["predicted_class"] == "bot"][colnames]
 
-# i. 
+    ga_hum= ga[ga["predicted_class"] == "human"][colnames]
+    ga_bot = ga[ga["predicted_class"] == "bot"][colnames]
+
+    midterm_hum = midterms[midterms["class"] == "human"][colnames]
+    midterm_bot = midterms[midterms["class"] == "bot"][colnames]
+    
+
+# ii. 
 def comparing_to_training_set():
     """
     Comparing some features of the dataset in order to check that the training dataset
@@ -69,7 +122,7 @@ def comparing_to_training_set():
     #plt.savefig(figure_path + "compare_datasets_description_length.pdf", bbox_inches = "tight")
     plt.show()
 
-# ii.
+# iii.
 def proportions_of_bots_and_humans():
     """
     Comparing the proportions of bots to humans for the US and Georgia datasets for:
@@ -132,7 +185,7 @@ def proportions_of_bots_and_humans():
     #plt.savefig(figure_path + "proportions_pie_chart_us.pdf", bbox_inches = "tight")
     plt.show()
     
-# iii.
+# iv.
 def exploring_user_distribution():
     """
     Printing out statistics for each of the US and Georgia datasets:

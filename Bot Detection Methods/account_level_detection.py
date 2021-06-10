@@ -20,7 +20,7 @@ from imblearn.combine import SMOTEENN, SMOTETomek
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout
@@ -99,6 +99,9 @@ def get_full_dataset(df = None, return_maxes = False):
         return df
 
 def get_X_y(mix , df = None , tr = 0.2 , seed = int(1349 * 565 // 13)):
+    """
+    Retrieves training and testing mixture (X = matrix of features, y = corresponding labels)
+    """
     if df is None:
         df = get_full_dataset()
     D = df[df["dataset"].isin(mix)].sample(frac = 1.0, random_state = seed).reset_index(drop = True)
@@ -113,18 +116,24 @@ def get_X_y(mix , df = None , tr = 0.2 , seed = int(1349 * 565 // 13)):
         return X_trn, y_trn, X_tst, y_tst
 
 def get_smotenn(X_trn, y_trn, seed = int(623*449)):
+    """
+    Resamples using SMOTENN
+    """
     SME = SMOTEENN(random_state = seed)
     X_trn, y_trn = SME.fit_resample(X_trn, y_trn)
     return X_trn, y_trn
 
 def get_smotetomek(X_trn, y_trn, seed = int(623*4413)):
+    """
+    Resamples using SMOTETOMEK
+    """
     SMTMK = SMOTETomek(random_state = seed)
     X_trn, y_trn = SMTMK.fit_resample(X_trn, y_trn)
     return X_trn, y_trn
 
-def get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_out = None, y_out = None):
+def get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_out = None, y_out = None, roc = False):
     """
-    Retrieves the scores of the classifier clf
+    Retrieves the scores of the classifier (clf)
     """
     # Making predictions...
     p_trn = np.round(clf.predict(X_trn))
@@ -146,6 +155,13 @@ def get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_out = None, y_out = None):
         scores += [precision_score(y_out, p_out)]
         scores += [recall_score(y_out, p_out)]
         scores += [f1_score(y_out, p_out)]
+        if roc:
+            # try:
+            #     prob_out = clf.predict_proba(X_out)[:,0]
+            # except:
+            #     prob_out = p_out
+            # scores += [roc_auc_score(y_out, prob_out)]
+            scores += [roc_auc_score(y_out, p_out)]
     return scores
 
 def get_nn(nfeats):
@@ -178,7 +194,7 @@ def compare_D1_to_D2():
     clf  = AdaBoostClassifier(n_estimators = 50, random_state = 25) # untrained AdaBoost classifier
     # Names of criteria:
     criteria_names = ["Accuracy", "Precision", "Recall", "F1"]
-    criteria_names  = ["Train accuracy"] + ["Test " + i for i in criteria_names] + ["OOS " + i for i in criteria_names]
+    criteria_names  = ["Train accuracy"] + ["Test " + i for i in criteria_names] + ["OOS " + i for i in criteria_names] + ["OOS AUC"]
     # Retrieving the training dataset:
     df = get_full_dataset()
     X_OOS, y_oos = get_X_y(D3, df, tr = 0, seed = 2077)
@@ -202,19 +218,19 @@ def compare_D1_to_D2():
             X_oos = scaling.transform(X_oos)
             
             sf = pd.DataFrame(columns = ["Training Set", "Fold" , "Criterion" ,"Score"])
-            sf["Training Set"] = [mixname] * 9
-            sf["Fold"] = [f] * 9
+            sf["Training Set"] = [mixname] * 10
+            sf["Fold"] = [f] * 10
             sf["Criterion"] = criteria_names
             
             clf.fit(X_trn, y_trn)
-            sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
+            sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos, roc = True)
             
             score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
     # Plotting the Scores:
     Title = "Comparing Training Mixtures for Account Level Detection\n(on an Adaboost Model)"
     
-    plt.figure(figsize=(6, 3.5))
+    plt.figure(figsize=(6, 3.3))
     ax = sns.barplot(
         data = score_dataframe,
         x="Criterion",
@@ -224,10 +240,10 @@ def compare_D1_to_D2():
     ax.set_title(Title, fontweight = "bold");
     ax.set_xlabel("Score Criterion", fontweight = "bold")
     ax.set_ylabel("Score", fontweight = "bold")
-    ax.legend(title = "Training\nDataset", loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+    ax.legend(title = "Training\nMixture", loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
     plt.xticks(rotation=30, ha="right", va="center", rotation_mode = "anchor")
     
-    #plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_cresci_to_d1.pdf", bbox_inches = "tight")
+    # plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_cresci_to_d1.pdf", bbox_inches = "tight")
     
     plt.show()
     
@@ -256,7 +272,7 @@ def compare_models(trnsample = D1, outofsample = D3):
     # Labels for the pandas dataframe:
     classifier_names = ["RFC", "LR", "SVM", "AB", "NN"]
     criterion_names_ = ["Accuracy", "Precision", "Recall", "F1"]
-    criterion_names  = ["Train Accuracy"] + ["Test " + i for i in criterion_names_] + ["OOS " + i for i in criterion_names_]
+    criterion_names  = ["Train Accuracy"] + ["Test " + i for i in criterion_names_] + ["OOS " + i for i in criterion_names_] + ["OOS AUC"]
     # Retrieving training data
     df = get_full_dataset()
     X, y = get_X_y(trnsample, df, tr = 0, seed = 1097)
@@ -280,22 +296,22 @@ def compare_models(trnsample = D1, outofsample = D3):
         for clf, clf_name in zip(classifiers, classifier_names):
             print("Calculating ", f, ": ", clf_name)
             sf = pd.DataFrame(columns = ["Model", "Fold" , "Criterion" ,"Score"])
-            sf["Model"] = [clf_name] * 9
-            sf["Fold"] = [f] * 9
-            sf["Criterion"] = criterion_names
+            sf["Model"] = [clf_name] * 10
+            sf["Fold"] = [f] * 10
+            sf["Criterion"] = criterion_names # [:-1] # not [:-1]
             if clf_name == "NN":
                 set_seed(25)
                 clf.fit(X_trn, y_trn, epochs = 15, batch_size = 32, verbose = 0)
             else:
                 clf.fit(X_trn, y_trn)
-            sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos)
+            sf["Score"] = get_scores(clf, X_trn, y_trn, X_tst, y_tst, X_oos, y_oos, roc = True)
             score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
     
     # Plotting the scores:
     Title = "Comparing Account Level Detection Models"
     plt.figure(figsize=(6, 3.5))
     ax = sns.barplot(
-        data = score_dataframe[score_dataframe["Criterion"].isin(["Train Accuracy", "Test Accuracy", "OOS Accuracy", "OOS Precision", "OOS Recall", "OOS F1"])],
+        data = score_dataframe[score_dataframe["Criterion"].isin(["Train Accuracy", "Test Accuracy", "OOS Accuracy", "OOS Precision", "OOS Recall", "OOS F1", "OOS AUC"])],
         x="Criterion",
         y="Score",
         hue = "Model"
@@ -373,7 +389,7 @@ def compare_resampling():
     ax.legend(title = "Resampling\nMethod", loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
     plt.xticks(rotation=30, ha="right", va="center", rotation_mode = "anchor")
     
-    #plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_resampling_w_adaboost.pdf", bbox_inches = "tight")
+    # plt.savefig("C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\account_lvl_training_compare_resampling_w_adaboost.pdf", bbox_inches = "tight")
     
     plt.show()
         

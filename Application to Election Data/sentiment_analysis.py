@@ -39,11 +39,14 @@ def distribution_of_vader_sentiment():
     ga = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))[["id", "user.id", "created_at", "full_text", "tokenised_text", "user.verified", "in_reply_to_status_id", "retweeted_status.id", 'vader', 'predicted_class']]
     trn = pickle.load(open(m4r_data + "balanced_tweet_training_data.p", "rb"))[["user.id", "full_text", "tokenised_text", 'vader', 'class']]
     
+    # Alpha level of fill:
+    a = 0.1
+    
     #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
     # PLOT 1: UNADJUSTED VADER DISTRIBUTION
         
     fig, axes = plt.subplots(1, 3, figsize=(8, 2.9), sharey = True)
-    fig.suptitle('Distribution of VADER Scores', fontweight = "bold")
+    fig.suptitle('Distribution of VADER Scores: Unadjusted', fontweight = "bold")
     # For the TRAINING dataset
     sns.histplot(ax = axes[0],
                  data = trn.sort_values("class", ascending = False),
@@ -52,7 +55,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step",
+                 element = "poly",
+                 alpha = a
         )
     axes[0].set_title("Training", fontweight = "bold");
     axes[0].set_xlabel("")
@@ -65,7 +69,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step"
+                 element = "poly",
+                 alpha = a
         )
     axes[1].set_title("US", fontweight = "bold");
     axes[1].set_xlabel("VADER Score", fontweight = "bold")
@@ -78,7 +83,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step"
+                 element = "poly",
+                 alpha=a
         )
     axes[2].set_title("Georgia", fontweight = "bold");
     axes[2].set_xlabel("")
@@ -93,7 +99,7 @@ def distribution_of_vader_sentiment():
     axes[0].get_legend().remove()
     plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
     
-    #plt.savefig(figure_path + "compare_vader_polarity_scores.pdf", bbox_inches = "tight")
+    plt.savefig(figure_path + "compare_vader_polarity_scores_poly.pdf", bbox_inches = "tight")
     
     plt.show()
     
@@ -110,7 +116,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step",
+                 element = "poly",
+                 alpha = a
         )
     axes[0].set_title("Training", fontweight = "bold");
     axes[0].set_xlabel("")
@@ -123,7 +130,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step"
+                 element = "poly",
+                 alpha = a
         )
     axes[1].set_title("US", fontweight = "bold");
     axes[1].set_xlabel("VADER Score", fontweight = "bold")
@@ -136,7 +144,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step"
+                 element = "poly",
+                 alpha = a
         )
     axes[2].set_title("Georgia", fontweight = "bold");
     axes[2].set_xlabel("")
@@ -151,7 +160,7 @@ def distribution_of_vader_sentiment():
     axes[0].get_legend().remove()
     plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
     
-    #plt.savefig(figure_path + "compare_vader_polarity_scores_neutral_removed.pdf", bbox_inches = "tight")
+    plt.savefig(figure_path + "compare_vader_polarity_scores_neutral_removed_poly.pdf", bbox_inches = "tight")
     
     plt.show()
     
@@ -190,7 +199,7 @@ def distribution_of_vader_sentiment():
     ga2 = ga2.merge(ga.groupby(["user.id"]).first().reset_index()[["user.id", "predicted_class"]], how = "left", on = "user.id")
     
     fig, axes = plt.subplots(1, 3, figsize=(8, 2.9), sharey = True)
-    fig.suptitle('Distribution of VADER Scores: 5 Tweet Corpus', fontweight = "bold")
+    fig.suptitle('Distribution of VADER Scores: 5 Tweets Concatenated', fontweight = "bold")
     # For the TRAINING dataset
     sns.histplot(ax = axes[0],
                  data = trn2.sort_values("class", ascending = False),
@@ -199,7 +208,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step",
+                 element = "poly",
+                 alpha = a
         )
     axes[0].set_title("Training", fontweight = "bold");
     axes[0].set_xlabel("")
@@ -212,7 +222,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step"
+                 element = "poly",
+                 alpha = a
         )
     axes[1].set_title("US", fontweight = "bold");
     axes[1].set_xlabel("VADER Score", fontweight = "bold")
@@ -225,7 +236,8 @@ def distribution_of_vader_sentiment():
                  stat="density",
                  common_norm = False,
                  bins = np.linspace(-1,1,20),
-                 element = "step"
+                 element = "poly",
+                 alpha = a
         )
     axes[2].set_title("Georgia", fontweight = "bold");
     axes[2].set_xlabel("")
@@ -240,9 +252,76 @@ def distribution_of_vader_sentiment():
     axes[0].get_legend().remove()
     plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
     
-    #plt.savefig(figure_path + "compare_vader_polarity_scores_5_tweets_concat.pdf", bbox_inches = "tight")
+    plt.savefig(figure_path + "compare_vader_polarity_scores_5_tweets_concat_poly.pdf", bbox_inches = "tight")
     
     plt.show()
+    
+    #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
+    # PLOT 4: NEUTRAL SCORES REMOVED + 
+    # ORIGINAL VS RETWEET VS REPLY
+    # FOR THE GEORGIA DATASET!!!
+    
+    fig, axes = plt.subplots(1, 3, figsize=(8, 2.9), sharey = True)
+    fig.suptitle('Distribution of VADER Scores for the Georgia Dataset For\nDifferent Types of Tweets With Neutral Scores Removed', fontweight = "bold")
+    # For the original tweets
+    sns.histplot(ax = axes[0],
+                 data = ga[((ga["in_reply_to_status_id"].isna()) & (ga["retweeted_status.id"].isna())) & (ga["vader"] != 0)].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "poly",
+                 alpha = a
+        )
+    axes[0].set_title("Original", fontweight = "bold");
+    axes[0].set_xlabel("")
+    
+    # For the retweets
+    sns.histplot(ax = axes[1],
+                 data = ga[(ga["retweeted_status.id"].isna() == False) & (ga["vader"] != 0)].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "poly",
+                 alpha = a
+        )
+    axes[1].set_title("Retweet", fontweight = "bold");
+    axes[1].set_xlabel("VADER Score", fontweight = "bold")
+    axes[1].get_legend().remove()
+    # For the GEORGIA dataset
+    sns.histplot(ax = axes[2],
+                 data = ga[(ga["in_reply_to_status_id"].isna() == False) & (ga["vader"] != 0)].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "poly",
+                 alpha = a
+        )
+    axes[2].set_title("Reply", fontweight = "bold");
+    axes[2].set_xlabel("")
+    axes[2].get_legend().remove()
+    
+    axes[0].set_ylabel("Density", fontweight = "bold")
+    
+    old_legend = axes[0].legend_
+    handles = old_legend.legendHandles
+    labels = ["Human", "Bot"] # [t.get_text() for t in old_legend.get_texts()]
+    axes[1].legend(handles, labels, ncol = 2, loc='upper center', bbox_to_anchor=(-0.62, -0.13))
+    axes[0].get_legend().remove()
+    plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.76)
+    
+    plt.savefig(figure_path + "compare_vader_polarity_scores_georgia_tweet_types_poly.pdf", bbox_inches = "tight")
+    
+    plt.show()
+    
+    
+    
+    
     
     
     #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
@@ -289,9 +368,98 @@ def distribution_of_vader_sentiment():
     axes[0].set_xlabel("VADER Score", fontweight = "bold", x = 1)
     plt.show()
     
+    #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
+    # PLOT 5: ORIGINAL TWEETS ONLY
+        
     
-    
+    plt_data_1 = us[(us["in_reply_to_status_id"].isna()) & (us["retweeted_status.id"].isna())]
+    plt_data_2 = ga[(ga["in_reply_to_status_id"].isna()) & (ga["retweeted_status.id"].isna())]
 
+    fig, axes = plt.subplots(1, 2, figsize=(6, 2.9), sharey = True)
+    fig.suptitle('Distribution of VADER Scores: Original Tweets + Neutral Removed', fontweight = "bold")
+    
+    # For the US dataset
+    sns.histplot(ax = axes[0],
+                 data = plt_data_1[plt_data_1["vader"] != 0].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "step"
+        )
+    axes[0].set_title("US", fontweight = "bold");
+    axes[0].set_xlabel("VADER Score", fontweight = "bold")
+    # For the GEORGIA dataset
+    sns.histplot(ax = axes[1],
+                 data = plt_data_2[plt_data_2["vader"] != 0].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "step"
+        )
+    axes[1].set_title("Georgia", fontweight = "bold");
+    axes[1].set_xlabel("")
+    axes[1].get_legend().remove()
+    
+    axes[0].set_ylabel("Density", fontweight = "bold")
+    
+    old_legend = axes[0].legend_
+    handles = old_legend.legendHandles
+    labels = ["Human", "Bot"] # [t.get_text() for t in old_legend.get_texts()]
+    axes[1].legend(handles, labels, ncol = 2, loc='upper center', bbox_to_anchor=(-0.62, -0.13))
+    axes[0].get_legend().remove()
+    plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
+    
+    #plt.savefig(figure_path + "compare_vader_polarity_scores.pdf", bbox_inches = "tight")
+    
+    plt.show()
+    
+    #=-=-=-=-=--=-=--=-=-=-=-=-===-=-=-=-=-=-=-=-=-=-==-=-=-=-=--=-=--=-=-=-=-=
+    # PLOT 6: RETWEETS ONLY
+        
+    fig, axes = plt.subplots(1, 2, figsize=(8, 2.9), sharey = True, sharex = True)
+    fig.suptitle('Distribution of VADER Scores: Replies + Neutral Removed', fontweight = "bold")
+    # US
+    sns.histplot(ax = axes[0],
+                 data = us[(us["retweeted_status.id"].isna() == False) & (us["vader"] != 0)].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "step"
+        )
+    axes[0].set_title("US", fontweight = "bold");
+    axes[0].set_xlabel("")
+    # GEORGIA
+    sns.histplot(ax = axes[1],
+                 data = ga[(ga["retweeted_status.id"].isna() == False) & (ga["vader"] != 0)].sort_values("predicted_class", ascending = False),
+                 x = "vader",
+                 hue = "predicted_class",
+                 stat="density",
+                 common_norm = False,
+                 bins = np.linspace(-1,1,20),
+                 element = "step"
+        )
+    axes[1].set_title("Georgia", fontweight = "bold");
+    axes[1].set_xlabel("")
+    axes[1].get_legend().remove()
+    
+    axes[0].set_ylabel("Density", fontweight = "bold")
+    
+    old_legend = axes[0].legend_
+    handles = old_legend.legendHandles
+    labels = ["Human", "Bot"] # [t.get_text() for t in old_legend.get_texts()]
+    axes[1].legend(handles, labels, ncol = 2, loc='upper right', bbox_to_anchor=(-0.42, -0.13))
+    axes[0].get_legend().remove()
+    plt.subplots_adjust(wspace = 0.02, hspace = 0.3, top = 0.8)
+    
+    
+    axes[0].set_xlabel("VADER Score", fontweight = "bold", x = 1)
+    plt.show()
     
     
     

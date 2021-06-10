@@ -39,31 +39,28 @@ glove_file_100 = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\glove.twit
 weightsavepath = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Tweet Level Detection\\contextual_LSTM_weights_balanced\\"
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\"
 
-newweightsavepath = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository\\contextual_lstm_trained_weights\\"
-newweightsavepath50 = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository\\contextual_lstm_trained_weights_dimension_50\\"
-
-
 # 3. Preprocessing ------------------------------------------------------------ (DONE)
-# def balance_data(save = False):
-#     """
-#     Balances and saves the tweet data (from all available datasets)
-#     """
+def balance_data(save = False):
+    """
+    Balances and saves the tweet data (from all available datasets)
+    """
+    # Load all available training data
+    df = pickle.load(open(m4r_data + "tweet_training_data.p", "rb"))
+    df = df.sample(frac = 1.0, random_state = 1349565 // 17).reset_index(drop = True) # shuffle
+    df["user.id"] = df["user.id"].astype("int64")
+    df = df.groupby("user.id").head(200) # pick a random sample of up to 200 tweets from each person
     
-#     df = pickle.load(open(m4r_data + "tweet_training_data.p", "rb"))
-#     df = df.sample(frac = 1.0, random_state = 1349565 // 17).reset_index(drop = True) # shuffle
-#     df["user.id"] = df["user.id"].astype("int64")
-#     df = df.groupby("user.id").head(200) # pick a random sample of up to 200 tweets from each person
+    # Pring and show the balance of the data:
+    print("Bots:  ", sum(df["class"] == "bot") / len(df) * 100, "%")
+    print("Humans:", sum(df["class"] == "human") / len(df) * 100, "%")
+    ax = sns.histplot(data = df, x = "dataset"); ax.set_title("Balance of Datasets");  plt.xticks(rotation = 60); plt.show()
     
-#     # Show the balance of the data:
-#     print("Bots:  ", sum(df["class"] == "bot") / len(df) * 100, "%")
-#     print("Humans:", sum(df["class"] == "human") / len(df) * 100, "%")
-#     ax = sns.histplot(data = df, x = "dataset"); ax.set_title("Balance of Datasets");  plt.xticks(rotation = 60); plt.show()
-    
-#     if save:
-#         pickle.dump(df, open(m4r_data + "balanced_tweet_training_data.p" , "wb"))
+    if save:
+        pickle.dump(df, open(m4r_data + "balanced_tweet_training_data.p" , "wb"))
     
 def get_tweet_data():
     """
+    Retrieves BALANCED training dataset
     """
     df = pickle.load(open(m4r_data + "balanced_tweet_training_data.p" , "rb"))
     df = df.sample(frac = 1.0, random_state = 1349565 // 19).reset_index(drop = True)
@@ -71,6 +68,7 @@ def get_tweet_data():
 
 def tensorfy(df, max_tokens = 50000, output_sequence_length = 40, batch_size = 2048):
     """
+    Vectorizes text, standardizes metadata
     """
     # Train-Val split (during training, the train data will be further split into train-test as well, but we need two separate datasets to get F1, Recall, Precision etc...)
     split = int(len(df) * 0.8)
@@ -110,14 +108,14 @@ def tensorfy(df, max_tokens = 50000, output_sequence_length = 40, batch_size = 2
 def get_embeddings_index_100():
     """
     Loading the twitter glove file 100d (100 dimensions)
-    *DIMENSIONS = 100, IF THIS WERE TO CHANGE, CHANGE THE IF STATEMENT*
+    *DIMENSIONS = 100
     """
     embeddings_index = {}
     with open(glove_file_100,'r',encoding = "utf-8") as f:
         for line in f:
             word, coefs = line.split(maxsplit=1)
             coefs = np.fromstring(coefs, dtype = "f", sep=" ")
-            if len(coefs) == 100:# checking to see it matches the dimension!
+            if len(coefs) == 100: # checking to see it matches the dimension!
                 embeddings_index[word] = coefs
     print("Found %s word vectors." % len(embeddings_index))
     return embeddings_index
@@ -125,7 +123,7 @@ def get_embeddings_index_100():
 def get_embeddings_index_50():
     """
     Loading the twitter glove file 50d (50 dimensions)
-    *DIMENSIONS = 50, IF THIS WERE TO CHANGE, CHANGE THE IF STATEMENT*
+    *DIMENSIONS = 50
     """
     embeddings_index = {}
     with open(glove_file_50,'r',encoding = "utf-8") as f:
@@ -141,7 +139,6 @@ def get_embedding_matrix(vectorizer, embeddings_index, embedding_dim = 100):
     """
     Creates the embedding_matrix
     NOTE: num_tokens = len(voc) + 2 (the +2 is for padding of "[UNK]" (unknown) and "" (empty space))
-    NOTE: If dimensions change, change embedding_dim (currently set to 100)
     """
     hits = 0; misses = 0 # variables to record number of words converteds
     # retrieving voc and word_index from vectorizer
@@ -166,16 +163,20 @@ def get_embedding_matrix(vectorizer, embeddings_index, embedding_dim = 100):
     
 def run_preprocessing(max_tokens = 50000, embedding_dim = 100, output_sequence_length = 40):
     """
+    Runs the tensorfy function (above)
+    
     """
-    df = get_tweet_data()
+    df = get_tweet_data() # Retrieving training dataset
+    # Running Tensorfy (vectorizes tweets, standardizes metadata)
     vectorizer, scaling, tweets, metadata, labels= tensorfy(df, max_tokens = max_tokens, output_sequence_length = output_sequence_length, batch_size = 2048)
+    # Retrieve embeddings index
     if embedding_dim == 100:
         embeddings_index = get_embeddings_index_100()
     elif embedding_dim == 50:
         embeddings_index = get_embeddings_index_50()
     embedding_matrix = get_embedding_matrix(vectorizer, embeddings_index, embedding_dim)
 
-    # vectorizer.get_vocabulary()[:10]
+    # vectorizer.get_vocabulary()[:10] # this would pring the top 10 most occurring words in our training dataset
     
     return vectorizer, scaling, tweets, metadata, labels, embeddings_index, embedding_matrix
 
@@ -184,11 +185,8 @@ def contextual_lstm_model(embed_mat, optimizer = "Adam"):
     """
     Defines LSTM model structure:
     """
-    
-    max_length = 40 # = output_sequence_length
+    max_length = 40 # = output_sequence_length # maximum number of tokens we will allow (by truncating and padding tweets)
     tweet_input = Input(shape=(max_length,), dtype = 'int64', name = "tweet_input")
-    # Previous embedding layer:
-    #embed_layer = Embedding(50002, 100, embeddings_initializer=Constant(embed_mat), input_length = 40, trainable = False)(tweet_input)
     # New embedding layer: with masking
     embed_layer = Embedding(50002, 100, embeddings_initializer=Constant(embed_mat), input_length = 40, trainable = False, mask_zero = True)(tweet_input)
     lstm_layer = LSTM(100)(embed_layer)
@@ -215,8 +213,6 @@ def contextual_lstm_model_50(embed_mat, embed_size = 30000, embed_dim = 50, max_
     """
      # = output_sequence_length
     tweet_input = Input(shape=(max_length,), dtype = 'int64', name = "tweet_input")
-    # Previous embedding layer:
-    #embed_layer = Embedding(50002, 100, embeddings_initializer=Constant(embed_mat), input_length = 40, trainable = False)(tweet_input)
     # New embedding layer: with masking
     embed_layer = Embedding(input_dim = embed_size, output_dim = embed_dim, embeddings_initializer=Constant(embed_mat), input_length = max_length, trainable = False, mask_zero = True)(tweet_input)
     lstm_layer = LSTM(embed_dim)(embed_layer)
@@ -273,7 +269,7 @@ def train_contextual_lstm_model(num_epochs = 10, optimizer = "Adam", batch_size 
     print("Begin training...")
     # Training the model on very few epochs
     
-    split = int(0.8*len(tweets))
+    split = int(0.8*len(tweets)) # training testing split is 80:20
     
     history = model.fit(
         {'tweet_input': tweets[:split,:], 'metadata_input': metadata[:split,:]},
@@ -289,36 +285,16 @@ def train_contextual_lstm_model(num_epochs = 10, optimizer = "Adam", batch_size 
     return model, history
 
 
-
-
-
-
-
-# vectorizer, scaling, tweets, metadata, labels, embeddings_index, embedding_matrix = run_preprocessing()
-
-# model, history = train_contextual_lstm_model(num_epochs = 30, optimizer = "Adam", batch_size = 1024, load_weights_path = weightsavepath, vectorizer = vectorizer, tweets = tweets, metadata = metadata, labels = labels, embeddings_index = embeddings_index, embedding_matrix = embedding_matrix)
-
-# model, history = train_contextual_lstm_model(num_epochs = 50, optimizer = "Adam", batch_size = 2048, vectorizer = vectorizer, tweets = tweets, metadata = metadata, labels = labels, embeddings_index = embeddings_index, embedding_matrix = embedding_matrix, save_to_path = newweightsavepath)
-
-
-# # # # # REDUCING DIMENSIONS AND TOKENS IN HOPES OF BETTER GENERALISABILITY
-
-
-
-# vectorizer, scaling, tweets, metadata, labels, embeddings_index, embedding_matrix = run_preprocessing(max_tokens = 29998, embedding_dim = 50) # 30,000 word vectors, embedding dimension of 50
-
-# model, history = train_contextual_lstm_model(moddd = 1, num_epochs = 50, optimizer = "Adam", batch_size = 2048, vectorizer = vectorizer, tweets = tweets, metadata = metadata, labels = labels, embeddings_index = embeddings_index, embedding_matrix = embedding_matrix, save_to_path = newweightsavepath50)
-
-
-
-
-
-
-
-
-
-
-
+def run_training(epochs = 30, batch = 1024):
+    """
+    Trains model
+    epochs = #epochs to train
+    batch = training batch size
+    """
+    
+    vectorizer, scaling, tweets, metadata, labels, embeddings_index, embedding_matrix = run_preprocessing()
+    
+    model, history = train_contextual_lstm_model(num_epochs = epochs, optimizer = "Adam", batch_size = batch, vectorizer = vectorizer, tweets = tweets, metadata = metadata, labels = labels, embeddings_index = embeddings_index, embedding_matrix = embedding_matrix, save_to_path = weightsavepath)
 
 
 
@@ -344,6 +320,7 @@ def get_scores_5(y_trn, p_trn, y_tst, p_tst):
 
 # Load Model:
 def load_trained_model(optimizer = "Adam", save = False):
+    # Running Contextual LSTM on training and testing data:
     # Takes about 8 minutes to run LSTM to predict on the training set
     vectorizer, scaling, tweets, metadata, labels, embeddings_index, embedding_matrix = run_preprocessing()
     model = contextual_lstm_model(embedding_matrix)
@@ -352,16 +329,17 @@ def load_trained_model(optimizer = "Adam", save = False):
     trn_predictions = model.predict({"tweet_input" : tweets[:split,:], 'metadata_input' : metadata[:split,:]})
     tst_predictions = model.predict({"tweet_input" : tweets[split:,:], 'metadata_input' : metadata[split:,:]})
     
-    
-    
-    criterion_names = ["Train Accuracy", "Test Accuracy", "Test Precision", "Test Recall", "Test F1"]
-    
     trn_predictions_lstm = np.round((trn_predictions[1]).reshape(-1,))
     trn_predictions_contextual_lstm = np.round((trn_predictions[0]).reshape(-1))
     
     tst_predictions_lstm = np.round((tst_predictions[1]).reshape(-1,))
     tst_predictions_contextual_lstm = np.round((tst_predictions[0]).reshape(-1))
     
+    
+    # Retrieving Scores for the classifiers
+    
+    criterion_names = ["Train Accuracy", "Test Accuracy", "Test Precision", "Test Recall", "Test F1"]
+
     score_dataframe = pd.DataFrame()
 
     
@@ -425,14 +403,7 @@ def load_trained_model(optimizer = "Adam", save = False):
     sf["Score"] = get_scores_5(labels[:split], p_trn, labels[split:], p_tst)
     score_dataframe = pd.concat([score_dataframe, sf], ignore_index = True)
 
-
-
-
-
-
-
-
-
+    # Plotting
 
     Title = "Comparison of Tweet Level Detection Models\n"
     Title += "(trained on all datasets with 80:20 split)"

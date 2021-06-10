@@ -140,14 +140,19 @@ def centrality_scores():
     centrality_df["Community"] = centrality_df["Community"].replace({8 : "Group 8", 42 : "Group 42"})
     centrality_df = centrality_df.sort_values(["Class", "Community"], ascending = False)
     
+    # Node user ids with the 7 highest in degrees
+    populars = list(centrality_df.sort_values("In-Degree", ascending = False)["user.id"].iloc[:7])
+    
+    
+    
     # Plotting the centrality scores against each other...
     pal = [sns.color_palette("tab10")[7], sns.color_palette("tab10")[0], sns.color_palette("tab10")[1]]
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.1), sharey = True)
     fig.suptitle('Comparing Centrality Measures for the Georgia Reply Network', fontweight = "bold")
     # In degree vs Out degree
-    sns.scatterplot(ax = axes[0], data = centrality_df, y = "In-Degree", x = "Out-Degree", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
+    sns.scatterplot(ax = axes[0], data = centrality_df[centrality_df["user.id"].isin(populars) == False], y = "In-Degree", x = "Out-Degree", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
     # In degree vs PageRank
-    sns.scatterplot(ax = axes[1], data = centrality_df, y = "In-Degree", x = "PageRank", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
+    sns.scatterplot(ax = axes[1], data = centrality_df[centrality_df["user.id"].isin(populars) == False], y = "In-Degree", x = "PageRank", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
     
     # Legend
     handles, labels = axes[0].get_legend_handles_labels()
@@ -317,9 +322,51 @@ def compare_bot_to_human_vader_over_time_us():
     plt.show()
 
 
+def exploring_community_interactions():
+    """
+    For Georgia Reply Network.
+    Exploring Truncated Reply Network...
+    
+    1. Splitting into four groups: by spliting group 8 and 42, and bot and humans.
+    
+    """
+    
+    # Now retrieving the Louvain community for each account (if the account is in community 8 or 42)
+    gephi = pd.read_csv(m4r_data + "Georgia Reply Network Louvain Community Detection.csv")[["Id", "modularity_class"]].rename({"Id" : "user.id", "modularity_class" : "Community"}, axis = 1)
+    gephi = gephi[gephi["Community"].isin([8, 42])] # Only care about Community labels for nodes in Communities 8 or 42 (the largest communities)
 
+    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
+    df = df[df["in_reply_to_status_id"].isna() == False] # keep only replies
+    df = df[df["user.id"].isin(gephi["user.id"])]  # keep only users that are in reduced reply network
+    users = pickle.load(open(m4r_data + "us_and_georgia_accounts.p", "rb"))
+    users = users[users["user.id"].isin(gephi["user.id"])]
+    edges = df[["user.id", "in_reply_to_user_id", "predicted_class"]].dropna()
+    edges.columns = ["Source", "Target", "Source Class"]
+    edges["Target"] = edges["Target"].astype("int64")
+    edges = edges.merge(users.rename({"user.id" : "Target"}, axis = 1)[["Target", "predicted_class"]], on = "Target", how = "left")
+    edges.rename({"predicted_class" : "Target Class"}, axis = 1, inplace = True)
+    
+    edges = edges.merge(gephi.rename({"user.id" : "Source", "Community" : "Source Group"}, axis = 1)[["Source", "Source Group"]], on = "Source", how = "left")
+    edges = edges.merge(gephi.rename({"user.id" : "Target", "Community" : "Target Group"}, axis = 1)[["Target", "Target Group"]], on = "Target", how = "left")
 
+    edges_backup = edges.copy()
 
+    edges = edges.dropna()
+    
+    edges = edges[(edges["Target Group"].isin([8, 42])) & (edges["Source Group"].isin([8, 42]))]
+    
+    edges["Proportion"] = 1
+    
+    CC = edges.groupby(["Source Class", "Target Class", "Source Group", "Target Group"]).count()[["Proportion"]]
 
+    CC = CC / sum(CC["Proportion"]) * 100
+    
+    users_8_42 = users.merge(gephi, how = "left", on = "user.id")
+    
+    print("H8: ", sum((users_8_42["Community"] == 8) & (users_8_42["predicted_class"] == "human") ) / len(users_8_42) * 100)
+    print("B8: ", sum((users_8_42["Community"] == 8) & (users_8_42["predicted_class"] == "bot") ) / len(users_8_42) * 100)
+    print("H42:", sum((users_8_42["Community"] == 42) & (users_8_42["predicted_class"] == "human") ) / len(users_8_42) * 100)
+    print("B42:", sum((users_8_42["Community"] == 42) & (users_8_42["predicted_class"] == "bot") ) / len(users_8_42) * 100)
 
-
+    # Proportions of users:
+    U = gephi[["user.id", "Community"]].merge(users[["user.id", "predicted_class"]], how = "left", on = "user.id")
