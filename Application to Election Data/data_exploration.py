@@ -9,6 +9,11 @@ This includes:
     iv.  Checking statistics of the datasets to check how representative of all Twitter users the Georgia and US tweets are
 """
 
+# folder location where data is held
+# CHANGE THIS:
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" 
+
+
 # 1. SETUP --------------------------------------------------------------------
 import pickle, sys, datetime
 import pandas as pd
@@ -22,7 +27,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import AdaBoostClassifier
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 sns.set(font="Arial") # Setting the plot style
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" # folder location where data is held
+
 # Importing Account Level Detection
 sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
 from account_level_detection import get_full_dataset, features
@@ -218,3 +223,178 @@ def exploring_user_distribution():
     print("The average number of followers the accounts have is " + str(np.mean(us_users["user.followers_count"])))
     
     
+    
+# v.
+def pie_chart_of_bots_to_humans():
+    """
+    Comparing the proportions of bots to humans for the US and Georgia datasets for:
+        1. all of the (unique) users
+    """
+    # Loading the US election dataset: (change file name to choose)
+    df = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))
+    # Retrieving the unique users:
+    user_us = df.groupby("user.id").first()
+    
+    # Loading the Georgia election dataset: (change file name to choose)
+    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
+    # Retrieving the unique users:
+    user_ga = df.groupby("user.id").first()
+
+    df = None
+
+    # Setting colours and fonts
+    c = ["#83C9F1" , "#FED28F"]
+    t = {'fontsize': 20, "fontweight" : "bold"}
+    
+    # Plotting 4 pie charts
+    fig, axes = plt.subplots(1, 2, figsize=(5, 4))
+    fig.suptitle('Proportions of Human and Bot Accounts', fontweight = "bold", y = 0.8)
+    # PROPORTION OF USERS PIE CHART
+    axes[0].set_title("US", fontweight = "bold");
+    h = sum(user_us["predicted_class"] == "human")
+    b = sum(user_us["predicted_class"] == "bot")
+    counts = [h, b]
+    axes[0].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # Georgia
+    axes[1].set_title("Georgia", fontweight = "bold");
+    h = sum(user_ga["predicted_class"] == "human")
+    b = sum(user_ga["predicted_class"] == "bot")
+    counts = [h, b]
+    axes[1].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # Adding a legend
+    handles, labels = axes[0].get_legend_handles_labels()
+    orange_patch = mpatches.Patch(color=c[1], label='Bot')
+    blue_patch = mpatches.Patch(color=c[0], label='Human')
+    plt.legend(handles=[blue_patch, orange_patch], bbox_to_anchor=(1, 0.9))
+    
+    plt.subplots_adjust(wspace = 0.05, hspace = -1, top = 0.65)
+    plt.savefig(figure_path + "proportions_pie_chart_us_and_georgia.pdf", bbox_inches = "tight")
+    plt.show()
+    
+    
+    
+    
+# vi.
+def proportions_of_bots_and_humans_2():
+    """
+    Comparing the proportions of bots to humans for the US and Georgia datasets for:
+        1. all of the (unique) users
+        2. all of the tweets
+        3. all of the retweets
+        4. all of the replies
+    FOR THE BEAMER PRESENTATION
+    """
+    # Loading the US election dataset: (change file name to choose)
+    df = pickle.load(open(m4r_data + "us_election_tweets.p", "rb"))
+    # Retrieving the unique users:
+    userdf = df.groupby("user.id").first()
+    # Retrieving the retweets:
+    retweetdf = df[["retweeted_status.id", "predicted_class"]].dropna()
+    # Retrieving the replies:
+    replydf = df[["in_reply_to_status_id", "predicted_class"]].dropna()
+    
+    us_h_u = sum(userdf["predicted_class"] == "human")
+    us_b_u = sum(userdf["predicted_class"] == "bot")
+    
+    us_h_t = sum(df["predicted_class"] == "human")
+    us_b_t = sum(df["predicted_class"] == "bot")
+    
+    us_h_rt = sum(retweetdf["predicted_class"] == "human")
+    us_b_rt = sum(retweetdf["predicted_class"] == "bot")
+    
+    us_h_rp = sum(replydf["predicted_class"] == "human")
+    us_b_rp = sum(replydf["predicted_class"] == "bot")
+    
+    # Loading the Georgia election dataset: (change file name to choose)
+    df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))
+    # Retrieving the unique users:
+    userdf = df.groupby("user.id").first()
+    # Retrieving the retweets:
+    retweetdf = df[["retweeted_status.id", "predicted_class"]].dropna()
+    # Retrieving the replies:
+    replydf = df[["in_reply_to_status_id", "predicted_class"]].dropna()
+    
+    ga_h_u = sum(userdf["predicted_class"] == "human")
+    ga_b_u = sum(userdf["predicted_class"] == "bot")
+    
+    ga_h_t = sum(df["predicted_class"] == "human")
+    ga_b_t = sum(df["predicted_class"] == "bot")
+    
+    ga_h_rt = sum(retweetdf["predicted_class"] == "human")
+    ga_b_rt = sum(retweetdf["predicted_class"] == "bot")
+    
+    ga_h_rp = sum(replydf["predicted_class"] == "human")
+    ga_b_rp = sum(replydf["predicted_class"] == "bot")
+    
+    
+    df = None
+    userdf = None
+    retweetdf = None
+    replydf = None
+    
+    
+    
+    
+    
+    
+    
+    # Setting colours and fonts
+    c = ["#83C9F1" , "#FED28F"]
+    t = {'fontsize': 18, "fontweight" : "bold"}
+    
+    # Plotting 4 pie charts
+    fig, axes = plt.subplots(2, 4, figsize=(8, 4))
+    #fig.suptitle('Proportions of Humans and Bots in the US Election Dataset', fontweight = "bold", y = 0.8)
+    # PROPORTION OF USERS PIE CHART
+    axes[0][0].set_title("Accounts", fontweight = "bold");
+    axes[0][0].set_ylabel("US", fontweight = "bold")
+    counts = [us_h_u, us_b_u]
+    axes[0][0].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF TWEETS PIE CHART
+    axes[0][1].set_title("Tweets", fontweight = "bold");
+    counts = [us_h_t, us_b_t]
+    axes[0][1].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF RETWEETS PIE CHART
+    axes[0][2].set_title("Retweets", fontweight = "bold");
+    counts = [us_h_rt, us_b_rt]
+    axes[0][2].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF REPLIES PIE CHART
+    axes[0][3].set_title("Replies", fontweight = "bold");
+    counts = [us_h_rp, us_b_rp]
+    axes[0][3].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF USERS PIE CHART
+    axes[1][0].set_title("Accounts", fontweight = "bold");
+    axes[1][0].set_ylabel("Georgia", fontweight = "bold")
+    counts = [ga_h_u, ga_b_u]
+    axes[1][0].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF TWEETS PIE CHART
+    axes[1][1].set_title("Tweets", fontweight = "bold");
+    counts = [ga_h_t, ga_b_t]
+    axes[1][1].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF RETWEETS PIE CHART
+    axes[1][2].set_title("Retweets", fontweight = "bold");
+    counts = [ga_h_rt, ga_b_rt]
+    axes[1][2].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+    
+    # PROPORTION OF REPLIES PIE CHART
+    axes[1][3].set_title("Replies", fontweight = "bold");
+    counts = [ga_h_rp, ga_b_rp]
+    axes[1][3].pie(counts, autopct='%1.2f%%', colors = c, textprops=t)
+        
+    # # Adding a legend
+    # handles, labels = axes[0].get_legend_handles_labels()
+    # orange_patch = mpatches.Patch(color=c[1], label='Bot')
+    # blue_patch = mpatches.Patch(color=c[0], label='Human')
+    # plt.legend(handles=[blue_patch, orange_patch], bbox_to_anchor=(1, 0.9))
+    
+    #plt.subplots_adjust(wspace = 0.05, hspace = -0.5)
+    plt.savefig(figure_path + "proportions_pie_chart_us_ga_all.pdf", bbox_inches = "tight")
+    plt.show()

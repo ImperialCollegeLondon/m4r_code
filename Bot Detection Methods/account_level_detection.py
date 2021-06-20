@@ -8,6 +8,12 @@ Contents:
 4. Comparing Classifiers
 5. Plotting
 """
+
+# Path to find training data:
+# CHANGE THIS TO THE FOLDER LOCATION OF m4r_data
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
+
+
 # 1. SETUP --------------------------------------------------------------------
 import pickle #, math, sys, datetime
 import pandas as pd
@@ -29,8 +35,6 @@ from tensorflow.random import set_seed
 sns.set(font="Arial")
 
 # 2. MISC ---------------------------------------------------------------------
-# Path to find training data:
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
 # List of dataset names:
 DATASETS = [
     'Astroturf 2020',

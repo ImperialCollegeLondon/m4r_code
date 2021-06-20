@@ -8,12 +8,16 @@ Description:
     
 """
 
+# folder location where data is held
+# CHANGE THIS:
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" 
+
+
 # 1. SETUP --------------------------------------------------------------------
 import pickle, sys, datetime
 import pandas as pd
 import numpy as np
 import seaborn as sns
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
 import matplotlib.pyplot as plt
 sns.set(font="Arial") # Setting the plot style
 sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
@@ -124,7 +128,7 @@ def centrality_scores():
     centrality_df = ((d1.merge(d2, on = "index")).merge(d3, on = "index")).rename({"index" : "user.id"}, axis = 1)
     
     # Now retrieving the Louvain community for each account (if the account is in community 8 or 42)
-    gephi = pd.read_csv(m4r_data + "Georgia Reply Network Louvain Community Detection.csv")[["Id", "modularity_class"]].rename({"Id" : "user.id", "modularity_class" : "Community"}, axis = 1)
+    gephi = pd.read_csv(m4r_data + "ga_reply_network_truncated_louvain_communities.csv")[["Id", "modularity_class"]].rename({"Id" : "user.id", "modularity_class" : "Community"}, axis = 1)
     gephi = gephi[gephi["Community"].isin([8, 42])] # Only care about Community labels for nodes in Communities 8 or 42 (the largest communities)
 
     # Now retrieving the class (bot or human label)
@@ -150,9 +154,9 @@ def centrality_scores():
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.1), sharey = True)
     fig.suptitle('Comparing Centrality Measures for the Georgia Reply Network', fontweight = "bold")
     # In degree vs Out degree
-    sns.scatterplot(ax = axes[0], data = centrality_df[centrality_df["user.id"].isin(populars) == False], y = "In-Degree", x = "Out-Degree", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
+    sns.scatterplot(ax = axes[0], data = centrality_df[centrality_df["user.id"].isin(populars) == False], y = "In-Degree", x = "Out-Degree", hue = "Class", s = 120, alpha = 0.9, palette = pal, style = "Community")
     # In degree vs PageRank
-    sns.scatterplot(ax = axes[1], data = centrality_df[centrality_df["user.id"].isin(populars) == False], y = "In-Degree", x = "PageRank", hue = "Class", style = "Community", s = 120, alpha = 0.9, palette = pal)
+    sns.scatterplot(ax = axes[1], data = centrality_df[centrality_df["user.id"].isin(populars) == False], y = "In-Degree", x = "PageRank", hue = "Class", s = 120, alpha = 0.9, palette = pal, style = "Community")
     
     # Legend
     handles, labels = axes[0].get_legend_handles_labels()
@@ -332,7 +336,7 @@ def exploring_community_interactions():
     """
     
     # Now retrieving the Louvain community for each account (if the account is in community 8 or 42)
-    gephi = pd.read_csv(m4r_data + "Georgia Reply Network Louvain Community Detection.csv")[["Id", "modularity_class"]].rename({"Id" : "user.id", "modularity_class" : "Community"}, axis = 1)
+    gephi = pd.read_csv(m4r_data + "ga_reply_network_truncated_louvain_communities.csv")[["Id", "modularity_class"]].rename({"Id" : "user.id", "modularity_class" : "Community"}, axis = 1)
     gephi = gephi[gephi["Community"].isin([8, 42])] # Only care about Community labels for nodes in Communities 8 or 42 (the largest communities)
 
     df = pickle.load(open(m4r_data + "georgia_election_tweets.p", "rb"))

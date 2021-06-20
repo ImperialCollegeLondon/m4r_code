@@ -10,6 +10,12 @@ This includes:
     2. Plotting average VADER sentiment over time
 """
 
+# folder location where data is held
+# CHANGE THIS:
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" 
+
+
+
 # 0. SETUP --------------------------------------------------------------------
 import pickle, sys, datetime
 import pandas as pd
@@ -20,7 +26,6 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 sns.set(font="Arial") # Setting the plot style
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" # folder location where data is held
 # Importing Account Level Detection
 sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_repository")
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\" # folder location to store files

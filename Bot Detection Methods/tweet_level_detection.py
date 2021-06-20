@@ -9,6 +9,15 @@ Contents:
 5. Training Model
 """
 
+# 2. File Paths ---------------------------------------------------------------
+# CHANGE ALL OF THESE TO WHERE THEY ARE STORED:
+m4r_data ="C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
+# GLOVE FILES CAN BE OBTAINED FROM: https://nlp.stanford.edu/data/glove.twitter.27B.zip
+glove_file_50 = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\glove.twitter.27B\\glove.twitter.27B.50d.txt"
+glove_file_100 = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\glove.twitter.27B\\glove.twitter.27B.100d.txt"
+weightsavepath = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Tweet Level Detection\\contextual_LSTM_weights_balanced\\"
+figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\"
+
 
 
 # 1. Packages -----------------------------------------------------------------
@@ -32,12 +41,6 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 sns.set(font="Arial")
 
-# 2. File Paths ---------------------------------------------------------------
-m4r_data ="C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
-glove_file_50 = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\glove.twitter.27B\\glove.twitter.27B.50d.txt"
-glove_file_100 = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\glove.twitter.27B\\glove.twitter.27B.100d.txt"
-weightsavepath = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Tweet Level Detection\\contextual_LSTM_weights_balanced\\"
-figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\"
 
 # 3. Preprocessing ------------------------------------------------------------ (DONE)
 def balance_data(save = False):

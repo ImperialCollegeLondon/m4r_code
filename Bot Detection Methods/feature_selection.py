@@ -8,6 +8,12 @@ level detection task. We use three different methods:
     iii. Recursive Feature Elimination with Random Forest Classifier
 """
 
+
+# Path to find training data:
+# CHANGE THIS TO THE FOLDER LOCATION OF m4r_data
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
+
+
 # 1. SETUP --------------------------------------------------------------------
 import pickle, re
 import pandas as pd
@@ -23,7 +29,6 @@ from emoji import UNICODE_EMOJI
 from nltk import TweetTokenizer
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 figure_path = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\Report\\Figures\\" # Figures save path
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" # File path where data is stored
 # Names of the available user features:
 datalabels = [
     'user.verified', 

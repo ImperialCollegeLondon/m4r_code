@@ -12,7 +12,7 @@ n:
     maximum number of tweets to collect per user
 """
 # *- NUMBER OF TWEETS TO COLLECT PER USER -*
-n = 5
+n = 0 # 5
 
 # *- USER ID LIST -*
 # list of accounts we want to extract tweets from
@@ -27,8 +27,8 @@ sys.path.insert(1, "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_code\\Data Har
 from full_text_tokeniser import text_tokeniser
 
 # *- FILE PATHS -*
-m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\"
-file  = "user_collected_tweets.p" # change
+m4r_data = "C:\\Users\\fangr\\Documents\\Year 4\\M4R\\m4r_data\\" # change this
+# file  = "user_collected_tweets.p" # change this 
 
 
 # *- TWITTER API KEYS -*
@@ -129,13 +129,14 @@ elif n == 0:
             users = api.lookup_users(user_ids = user_ids[i*100 : (i+1)*100])
             json_data = [u._json for u in users]
             dfj = pd.json_normalize(json_data)
+            dfj.columns = ["user."+ cc for cc in dfj.columns]
             df_entire = df_entire.append( dfj[user_features] , ignore_index = True)
             #full_users.drop(labels = droplab, axis = 1, inplace = True)
         except:
             pass
     print("\n",len(df_entire), "found out of", len(set(user_ids)))
 
-    pickle.dump(df_entire, open(m4r_data + file, "wb"))
+    # pickle.dump(df_entire, open(m4r_data + file, "wb"))
     
     
 
